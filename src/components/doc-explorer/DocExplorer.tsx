@@ -18,6 +18,17 @@ interface DocExplorerProps {
   onFocusNode: (id: string) => void;
   onSelectNode: (id: string) => void;
   onSelectEdge: (id: string) => void;
+
+  onEditEdge: (
+    typeId: string,
+    edgeId: string,
+    newEdgeId: string,
+    newDescription: string,
+    newDataType: string,
+  ) => void;
+  onEditType: (typeId: string, newTypeId: string, newDescription: string) => void;
+
+  scalars: string[];
 }
 
 const initialNav = { title: 'Type List', type: null, searchValue: null };
@@ -38,6 +49,15 @@ export default class DocExplorer extends React.Component<DocExplorerProps> {
 
       const type = typeGraph.nodes[selectedTypeID];
       const newNavStack = [...navStack, { title: type.name, type, searchValue: null }];
+
+      return { navStack: newNavStack, typeForInfoPopover: null };
+    }
+
+    // something in the typegraph has been edited -> modify navstack
+    if (typeGraph && typeGraph.nodes[selectedTypeID]) {
+      const type = typeGraph.nodes[selectedTypeID];
+      const newNavStack = [...navStack];
+      newNavStack[newNavStack.length - 1] = { title: type.name, type, searchValue: null };
 
       return { navStack: newNavStack, typeForInfoPopover: null };
     }
@@ -103,6 +123,8 @@ export default class DocExplorer extends React.Component<DocExplorerProps> {
           filter={currentNav.searchValue}
           onTypeLink={this.handleTypeLink}
           onSelectEdge={onSelectEdge}
+          onEditEdge={this.props.onEditEdge}
+          scalars={this.props.scalars}
         />
       );
     }
@@ -113,6 +135,7 @@ export default class DocExplorer extends React.Component<DocExplorerProps> {
         filter={currentNav.searchValue}
         onTypeLink={this.handleTypeLink}
         onFocusType={type => onFocusNode(type.id)}
+        onEditType={this.props.onEditType}
       />
     );
   }

@@ -81,7 +81,7 @@ export default class Voyager extends React.Component<VoyagerProps> {
 
   svgRenderer: SVGRender;
   viewportRef = React.createRef<GraphViewport>();
-  instospectionPromise = null;
+  introspectionPromise = null;
 
   constructor(props) {
     super(props);
@@ -115,10 +115,10 @@ export default class Voyager extends React.Component<VoyagerProps> {
       selectedEdgeID: null,
     });
 
-    this.instospectionPromise = promise;
+    this.introspectionPromise = promise;
     promise.then(introspectionData => {
-      if (promise === this.instospectionPromise) {
-        this.instospectionPromise = null;
+      if (promise === this.introspectionPromise) {
+        this.introspectionPromise = null;
         this.updateIntrospection(introspectionData, displayOptions);
       }
     });
@@ -132,14 +132,14 @@ export default class Voyager extends React.Component<VoyagerProps> {
       displayOptions.skipDeprecated,
     );
     const typeGraph = getTypeGraph(schema, displayOptions.rootType, displayOptions.hideRoot);
-
+    console.log('new typegraph', typeGraph);
     this.setState({
       introspectionData,
       schema,
       typeGraph,
       displayOptions,
-      selectedTypeID: null,
-      selectedEdgeID: null,
+      // selectedTypeID: null,
+      // selectedEdgeID: null,
     });
   }
 
@@ -181,6 +181,14 @@ export default class Voyager extends React.Component<VoyagerProps> {
     const { typeGraph, selectedTypeID, selectedEdgeID } = this.state;
     const onFocusNode = id => this.viewportRef.current.focusNode(id);
 
+    const scalars = this.state.introspectionData
+      ? this.state.introspectionData.data.__schema.types
+          .filter(x => x.kind === 'SCALAR')
+          .map(x => x.name)
+      : [];
+    const types = this.state.typeGraph
+      ? Object.values(this.state.typeGraph.nodes).map((x: any) => x.name)
+      : [];
     return (
       <div className="doc-panel">
         <div className="contents">
@@ -192,6 +200,9 @@ export default class Voyager extends React.Component<VoyagerProps> {
             onFocusNode={onFocusNode}
             onSelectNode={this.handleSelectNode}
             onSelectEdge={this.handleSelectEdge}
+            onEditEdge={this.handleEditEdge}
+            onEditType={this.handleEditType}
+            scalars={[...scalars, ...types]}
           />
           <PoweredBy />
         </div>
@@ -249,6 +260,117 @@ export default class Voyager extends React.Component<VoyagerProps> {
       const selectedTypeID = extractTypeId(selectedEdgeID);
       this.setState({ selectedTypeID, selectedEdgeID });
     }
+  };
+
+  handleEditEdge = (typeId, edgeId, newEdgeId, newDescription, newDataType) => {
+    if (!typeId) return;
+    const typeName = typeId.split('::')[1];
+    const fieldName = edgeId;
+    const data = { ...this.state.introspectionData };
+    //FIELD::Film::director
+
+    const typeIndex = data.data.__schema.types.findIndex(
+      t => t.kind === 'OBJECT' && t.name === typeName,
+    );
+    const fieldIndex = data.data.__schema.types[typeIndex].fields.findIndex(
+      f => f.name === fieldName,
+    );
+
+    if (fieldIndex > -1) {
+      // edit existing property
+      //@ts-ignore
+      data.data.__schema.types[typeIndex].fields[fieldIndex].description = newDescription;
+      //@ts-ignore
+      data.data.__schema.types[typeIndex].fields[fieldIndex].name = newEdgeId;
+      //@ts-ignore
+      data.data.__schema.types[typeIndex].fields[fieldIndex].type.name = newDataType;
+    } else {
+      // create a new property
+      data.data.__schema.types[typeIndex].fields = [
+        ...data.data.__schema.types[typeIndex].fields,
+        {
+          name: 'NEW',
+          description: newDescription,
+          args: [],
+          type: { kind: 'SCALAR', name: newDataType, ofType: null },
+          isDeprecated: false,
+          deprecationReason: null,
+        },
+      ];
+    }
+    //@ts-ignore
+    this.updateIntrospection(data, this.state.displayOptions);
+  };
+
+  handleEditType = (typeId: string, newTypeId: string, newDescription: string) => {
+    if (!typeId) return;
+    const typeName = typeId.split('::')[1];
+    const data = { ...this.state.introspectionData };
+    const typeIndex = data.data.__schema.types.findIndex(
+      t => t.kind === 'OBJECT' && t.name === typeName,
+    );
+    if (typeIndex > -1) {
+      // edit existing type
+    } else {
+      // create a new type
+      data.data.__schema.types = [
+        ...data.data.__schema.types,
+        {
+          kind: 'OBJECT',
+          name: newTypeId,
+          description: newDescription,
+          fields: [
+            {
+              name: 'id',
+              description: 'new field',
+              args: [],
+              type: {
+                kind: 'NON_NULL',
+                name: null,
+                ofType: { kind: 'SCALAR', name: 'ID', ofType: null },
+              },
+              isDeprecated: false,
+              deprecationReason: null,
+            },
+          ],
+          inputFields: null,
+          interfaces: [{ kind: 'INTERFACE', name: 'Node', ofType: null }],
+          enumValues: null,
+          possibleTypes: null,
+        },
+      ];
+
+      // update Root
+      data.data.__schema.types[0].fields = [
+        ...data.data.__schema.types[0].fields,
+        {
+          name: newTypeId.toLowerCase(),
+          description: null,
+          args: [
+            {
+              name: 'id',
+              description: null,
+              type: { kind: 'SCALAR', name: 'ID', ofType: null },
+              defaultValue: null,
+            },
+            {
+              name: 'vehicleID',
+              description: null,
+              type: { kind: 'SCALAR', name: 'ID', ofType: null },
+              defaultValue: null,
+            },
+          ],
+          type: {
+            kind: 'OBJECT',
+            name: newTypeId,
+            ofType: null,
+          },
+        },
+      ];
+    }
+    console.log('updated data', data);
+    //@ts-ignore
+    this.updateIntrospection(data, this.state.displayOptions);
   };
 
   static PanelHeader = props => {

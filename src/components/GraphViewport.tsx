@@ -15,19 +15,37 @@ interface GraphViewportProps {
   onSelectEdge: (id: string) => void;
 }
 
+type State = {
+  svgViewport: Viewport | null;
+  typeGraph: any;
+  displayOptions: any;
+  prevZoom: number | null;
+  prevPan: SvgPanZoom.Point | null;
+};
+
 export default class GraphViewport extends React.Component<GraphViewportProps> {
-  state = { typeGraph: null, displayOptions: null, svgViewport: null };
+  state: State = {
+    typeGraph: null,
+    displayOptions: null,
+    svgViewport: null,
+    prevZoom: null,
+    prevPan: null,
+  };
 
   // Handle async graph rendering based on this example
   // https://gist.github.com/bvaughn/982ab689a41097237f6e9860db7ca8d6
   _currentTypeGraph = null;
   _currentDisplayOptions = null;
-
+  prevZoom: number = null;
+  prevPan: SvgPanZoom.Point = null;
   static getDerivedStateFromProps(props, state) {
     const { typeGraph, displayOptions } = props;
 
     if (typeGraph !== state.typeGraph || displayOptions !== state.displayOptions) {
-      return { typeGraph, displayOptions, svgViewport: null };
+      const prevZoom = state.svgViewport ? state.svgViewport.zoomer.getZoom() : null;
+      const prevPan = state.svgViewport ? state.svgViewport.zoomer.getPan() : null;
+      console.log('WILL REVERT TO', prevZoom, prevPan);
+      return { typeGraph, displayOptions, svgViewport: null, prevZoom, prevPan };
     }
 
     return null;
@@ -38,11 +56,11 @@ export default class GraphViewport extends React.Component<GraphViewportProps> {
     this._renderSvgAsync(typeGraph, displayOptions);
   }
 
-  componentDidUpdate(prevProps, prevState) {
+  componentDidUpdate(prevProps, prevState: State) {
     const { svgViewport } = this.state;
-
     if (svgViewport == null) {
       const { typeGraph, displayOptions } = this.props;
+
       this._renderSvgAsync(typeGraph, displayOptions);
       return;
     }
@@ -57,6 +75,23 @@ export default class GraphViewport extends React.Component<GraphViewportProps> {
     if (prevProps.selectedEdgeID !== selectedEdgeID || isJustRendered) {
       svgViewport.selectEdgeById(selectedEdgeID);
     }
+
+    // const prevZoom = prevState.svgViewport ? prevState.svgViewport.zoomer.getZoom() : null;
+    // const prevPan = prevState.svgViewport ? prevState.svgViewport.zoomer.getPan() : null;
+    // console.log('PREv VALS', prevPan, prevZoom);
+
+    if (svgViewport !== prevState.svgViewport) {
+      if (this.state.prevPan && this.state.prevZoom && selectedTypeID) {
+        setTimeout(() => {
+          svgViewport.focusElement(selectedTypeID);
+          // svgViewport.animatePanAndZoom(
+          //   this.state.prevPan.x,
+          //   this.state.prevPan.y,
+          //   this.state.prevZoom,
+          // );
+        }, 10);
+      }
+    }
   }
 
   componentWillUnmount() {
@@ -69,7 +104,6 @@ export default class GraphViewport extends React.Component<GraphViewportProps> {
     if (typeGraph == null || displayOptions == null) {
       return; // Nothing to render
     }
-
     if (typeGraph === this._currentTypeGraph && displayOptions === this._currentDisplayOptions) {
       return; // Already rendering in background
     }
@@ -78,6 +112,7 @@ export default class GraphViewport extends React.Component<GraphViewportProps> {
     this._currentDisplayOptions = displayOptions;
 
     const { svgRenderer, onSelectNode, onSelectEdge } = this.props;
+
     svgRenderer
       .renderSvg(typeGraph, displayOptions)
       .then(svg => {
@@ -89,8 +124,10 @@ export default class GraphViewport extends React.Component<GraphViewportProps> {
         }
 
         this._cleanupSvgViewport();
+
         const containerRef = this.refs['viewport'] as HTMLElement;
         const svgViewport = new Viewport(svg, containerRef, onSelectNode, onSelectEdge);
+
         this.setState({ svgViewport });
       })
       .catch(error => {

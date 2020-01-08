@@ -20,6 +20,14 @@ interface TypeDocProps {
   filter: string;
   onSelectEdge: (string) => void;
   onTypeLink: (any) => void;
+  onEditEdge: (
+    typeId: string,
+    edgeId: string,
+    newEdgeId: string,
+    newDescription: string,
+    newDataType: string,
+  ) => void;
+  scalars: string[];
 }
 
 export default class TypeDoc extends React.Component<TypeDocProps> {
@@ -48,13 +56,15 @@ export default class TypeDoc extends React.Component<TypeDocProps> {
       filter,
       onSelectEdge,
       onTypeLink,
+      onEditEdge,
+      scalars,
     } = this.props;
 
     return (
       <>
         <Description className="-doc-type" text={selectedType.description} />
         {renderTypesDef(selectedType, selectedEdgeID)}
-        {renderFields(selectedType, selectedEdgeID)}
+        {renderFields(selectedType, selectedEdgeID, scalars)}
       </>
     );
 
@@ -109,7 +119,7 @@ export default class TypeDoc extends React.Component<TypeDocProps> {
       );
     }
 
-    function renderFields(type: SimplifiedTypeWithIDs, selectedId: string) {
+    function renderFields(type: SimplifiedTypeWithIDs, selectedId: string, scalars: string[]) {
       let fields: any = Object.values(type.fields);
       fields = fields.filter(field => {
         const args: any = Object.values(field.args);
@@ -119,12 +129,12 @@ export default class TypeDoc extends React.Component<TypeDocProps> {
       });
 
       if (fields.length === 0) return null;
-
       return (
         <div className="doc-category">
+          <AddNewButton selectedType={selectedType} onEditEdge={onEditEdge} scalars={scalars} />
           <div className="title">fields</div>
           {fields.map(field => {
-            let props: any = {
+            const props: any = {
               key: field.name,
               className: classNames('item', {
                 '-selected': field.id === selectedId,
@@ -134,30 +144,16 @@ export default class TypeDoc extends React.Component<TypeDocProps> {
             };
             if (field.id === selectedId) props.ref = 'selectedItem';
             return (
-              <div {...props}>
-                <a className="field-name">{highlightTerm(field.name, filter)}</a>
-                <span
-                  className={classNames('args-wrap', {
-                    '-empty': _.isEmpty(field.args),
-                  })}
-                >
-                  {!_.isEmpty(field.args) && (
-                    <span key="args" className="args">
-                      {_.map(field.args, arg => (
-                        <Argument
-                          key={arg.name}
-                          arg={arg}
-                          expanded={field.id === selectedId}
-                          onTypeLink={onTypeLink}
-                        />
-                      ))}
-                    </span>
-                  )}
-                </span>
-                <WrappedTypeName container={field} onTypeLink={onTypeLink} />
-                {field.isDeprecated && <span className="doc-alert-text"> DEPRECATED</span>}
-                <Markdown text={field.description} className="description-box -field" />
-              </div>
+              <ListItem
+                {...props}
+                filter={filter}
+                selectedId={selectedId}
+                onTypeLink={onTypeLink}
+                selectedType={selectedType}
+                onEditEdge={onEditEdge}
+                field={field}
+                scalars={scalars}
+              />
             );
           })}
         </div>
@@ -165,3 +161,99 @@ export default class TypeDoc extends React.Component<TypeDocProps> {
     }
   }
 }
+
+const ListItem = ({
+  filter,
+  selectedId,
+  onTypeLink,
+  selectedType,
+  onEditEdge,
+  field,
+  key,
+  className,
+  scalars,
+  ...props
+}: any) => {
+  const [isEditing, setIsEditing] = React.useState(false);
+  const onClick = () => {
+    setIsEditing(true);
+    props.onClick();
+  };
+
+  return (
+    <div key={key} className={className} onClick={onClick}>
+      {!isEditing && <a className="field-name">{highlightTerm(field.name, filter)}</a>}
+      {isEditing && (
+        <input
+          value={field.name}
+          onChange={e => {
+            onEditEdge(
+              selectedType.id,
+              field.name,
+              e.currentTarget.value,
+              field.description,
+              field.type.name,
+            );
+          }}
+        />
+      )}
+      <span
+        className={classNames('args-wrap', {
+          '-empty': _.isEmpty(field.args),
+        })}
+      >
+        {!_.isEmpty(field.args) && (
+          <span key="args" className="args">
+            {_.map(field.args, arg => (
+              <Argument
+                key={arg.name}
+                arg={arg}
+                expanded={field.id === selectedId}
+                onTypeLink={onTypeLink}
+              />
+            ))}
+          </span>
+        )}
+      </span>
+      {!isEditing && <WrappedTypeName container={field} onTypeLink={onTypeLink} />}
+      {isEditing && (
+        <select
+          value={field.type.name}
+          onChange={e => {
+            console.log(e.currentTarget.value);
+            onEditEdge(
+              selectedType.id,
+              field.name,
+              field.name,
+              field.description,
+              e.currentTarget.value,
+            );
+          }}
+        >
+          {scalars.map(s => (
+            <option value={s} key={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+      )}
+      {field.isDeprecated && <span className="doc-alert-text"> DEPRECATED</span>}
+      <Markdown
+        text={field.description}
+        className="description-box -field"
+        isEditing={isEditing}
+        onChange={(text: string) => {
+          onEditEdge(selectedType.id, field.name, field.name, text, field.type.name);
+        }}
+      />
+    </div>
+  );
+};
+
+const AddNewButton = ({ onEditEdge, selectedType, scalars }: any) => (
+  <button
+    onClick={() => onEditEdge(selectedType.id, 'test', 'test', 'test description', scalars[0])}
+  >
+    New property
+  </button>
+);

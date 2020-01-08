@@ -14,12 +14,13 @@ interface TypeListProps {
   filter: string;
   onFocusType: (any) => void;
   onTypeLink: (any) => void;
+  onEditType: (typeId: string, newTypeId: string, newDescription: string) => void;
 }
 
 export default class TypeList extends React.Component<TypeListProps> {
   render() {
     const { typeGraph, filter, onFocusType, onTypeLink } = this.props;
-
+    console.log(typeGraph);
     if (typeGraph === null) return null;
 
     const rootType = typeGraph.nodes[typeGraph.rootId];
@@ -31,6 +32,9 @@ export default class TypeList extends React.Component<TypeListProps> {
 
     return (
       <div className="doc-explorer-type-list">
+        <button onClick={() => this.props.onEditType('Test', 'Test', 'test description')}>
+          Add new type
+        </button>
         {rootType && renderItem(rootType, '-root')}
         {_.map(types, type => renderItem(type, ''))}
       </div>

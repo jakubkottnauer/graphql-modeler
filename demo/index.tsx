@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { render } from 'react-dom';
 
-import Button from '@material-ui/core/Button';
 import { MuiThemeProvider } from '@material-ui/core/styles';
 
 import { theme } from '../src/components/MUITheme';
@@ -40,7 +39,6 @@ export default class Demo extends React.Component {
   public render() {
     const { changeSchemaModalOpen, introspection } = this.state;
 
-    const openChangeSchema = () => this.setState({ changeSchemaModalOpen: true });
     const closeChangeSchema = () => this.setState({ changeSchemaModalOpen: false });
 
     return (
@@ -49,15 +47,6 @@ export default class Demo extends React.Component {
           <GraphQLVoyager.PanelHeader>
             <div className="voyager-panel">
               <Logo />
-              <Button
-                color="primary"
-                style={{ color: 'white' }}
-                variant="contained"
-                className="choosebutton"
-                onClick={openChangeSchema}
-              >
-                Change Schema
-              </Button>
             </div>
           </GraphQLVoyager.PanelHeader>
         </GraphQLVoyager>
@@ -90,7 +79,7 @@ class Logo extends React.Component {
           <div className="logo">
             <LogoIcon />
             <h2 className="title">
-              <strong>GraphQL</strong> Voyager
+              <strong>Data Model</strong> Voyager
             </h2>
           </div>
         </a>

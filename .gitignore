@@ -3,6 +3,7 @@ node_modules
 dist
 demo-dist
 .ghpages-tmp/
+.vscode
 
 stats.json
 npm-debug.log
