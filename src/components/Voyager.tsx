@@ -340,7 +340,6 @@ export default class Voyager extends React.Component<VoyagerProps> {
       const fieldKeys = Object.keys(typeData.fields);
       data.data.__schema.types[typeIndex].fields = data.data.__schema.types[typeIndex].fields.map(
         oldField => {
-          console.log('checking', oldField.name, typeData.fields);
           const newField = typeData.fields[oldField.name];
           if (newField) {
             //existing field has been renamed
@@ -349,6 +348,8 @@ export default class Voyager extends React.Component<VoyagerProps> {
             field.description = newField.description;
             if (field.type?.ofType?.name) {
               field.type.ofType.name = newField.type.name;
+            } else {
+              field.type.name = newField.type.name;
             }
             return field;
           } else {
