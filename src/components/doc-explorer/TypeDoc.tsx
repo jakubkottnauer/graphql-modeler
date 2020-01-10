@@ -103,6 +103,13 @@ export default class TypeDoc extends React.Component<TypeDocProps> {
       this.setState({ selectedType: typeCopy });
     };
 
+    const onDeleteEdge = fieldId => {
+      const typeCopy = _.cloneDeep(this.state.selectedType);
+      console.log(typeCopy, typeCopy.fields, fieldId);
+      delete typeCopy.fields[fieldId];
+      this.setState({ selectedType: typeCopy });
+    };
+
     return (
       <>
         {!this.state.isEditing && (
@@ -142,6 +149,7 @@ export default class TypeDoc extends React.Component<TypeDocProps> {
           this.state.isEditing,
           scalars,
           this.enableEditing,
+          onDeleteEdge,
         )}
         {this.state.isEditing && (
           <>
@@ -220,6 +228,7 @@ export default class TypeDoc extends React.Component<TypeDocProps> {
       isEditing: boolean,
       scalars: string[],
       enableEditing: Function,
+      onDeleteEdge: Function,
     ) {
       let fields: any = Object.values(type.fields);
       fields = fields.filter(field => {
@@ -262,6 +271,8 @@ export default class TypeDoc extends React.Component<TypeDocProps> {
                 field={field}
                 scalars={scalars}
                 isEditing={isEditing}
+                enableEditing={enableEditing}
+                onDeleteEdge={onDeleteEdge}
               />
             );
           })}
@@ -281,9 +292,22 @@ const ListItem = ({
   className,
   scalars,
   isEditing,
+  enableEditing,
+  onDeleteEdge,
 }: any) => {
   return (
     <div key={key} className={className}>
+      <Button
+        onClick={() => {
+          enableEditing();
+          setTimeout(() => {
+            //do this after state has been updated in enableEditing
+            onDeleteEdge(field.name);
+          });
+        }}
+      >
+        Delete field
+      </Button>
       {!isEditing && <a className="field-name">{highlightTerm(field.name, filter)}</a>}
       {isEditing && (
         <Input

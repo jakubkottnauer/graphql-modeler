@@ -340,13 +340,16 @@ export default class Voyager extends React.Component<VoyagerProps> {
       const fieldKeys = Object.keys(typeData.fields);
       data.data.__schema.types[typeIndex].fields = data.data.__schema.types[typeIndex].fields.map(
         oldField => {
+          console.log('checking', oldField.name, typeData.fields);
           const newField = typeData.fields[oldField.name];
           if (newField) {
             //existing field has been renamed
             const field = _.cloneDeep(oldField);
             field.name = newField.name;
             field.description = newField.description;
-            field.type.ofType.name = newField.type.name;
+            if (field.type?.ofType?.name) {
+              field.type.ofType.name = newField.type.name;
+            }
             return field;
           } else {
             // a field has been deleted
@@ -429,7 +432,6 @@ export default class Voyager extends React.Component<VoyagerProps> {
     replaceTypeWith(data, typeName, scalars[0]);
     // select the modified type as current type
     this.setState({ selectedTypeID: null });
-    console.log('updated data', data);
     //@ts-ignore
     this.updateIntrospection(data, this.state.displayOptions);
   };

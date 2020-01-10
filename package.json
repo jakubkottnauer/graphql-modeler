@@ -82,6 +82,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/APIs-guru/graphql-voyager.git"
+    "url": "git+https://github.com/jakubkottnauer/graphql-voyager.git"
   }
 }
