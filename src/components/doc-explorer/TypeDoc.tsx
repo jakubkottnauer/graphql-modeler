@@ -24,13 +24,13 @@ interface TypeDocProps {
   filter: string;
   onSelectEdge: (string) => void;
   onTypeLink: (any) => void;
-  onEditEdge: (
-    typeId: string,
-    edgeId: string,
-    newEdgeId: string,
-    newDescription: string,
-    newDataType: string,
-  ) => void;
+  // onEditEdge: (
+  //   typeId: string,
+  //   edgeId: string,
+  //   newEdgeId: string,
+  //   newDescription: string,
+  //   newDataType: string,
+  // ) => void;
   onEditType: (typeId: string, typeData: any) => void;
   scalars: string[];
 }
@@ -58,6 +58,23 @@ export default class TypeDoc extends React.Component<TypeDocProps> {
     itemComponent.scrollIntoViewIfNeeded();
   }
 
+  enableEditing = () => {
+    if (this.state.isEditing) {
+      return;
+    }
+
+    const type = _.cloneDeep(this.props.selectedType);
+
+    type.fields = Object.values(type.fields).reduce(
+      (acc: any, f: any, idx) => ({
+        ...acc,
+        [f.name]: { ...f, originalName: f.name, originalPosition: idx },
+      }),
+      {},
+    );
+    this.setState({ isEditing: true, selectedType: type });
+  };
+
   render() {
     const {
       selectedEdgeID,
@@ -73,24 +90,24 @@ export default class TypeDoc extends React.Component<TypeDocProps> {
     const selectedType = this.state.isEditing ? this.state.selectedType : this.props.selectedType;
     console.log('selected type!', selectedType);
     const onEditEdge = (fieldId, newFieldId, newDescription, newDataType) => {
-      const typeCopy = { ...this.state.selectedType };
+      const typeCopy = _.cloneDeep(this.state.selectedType);
+      if (!typeCopy.fields[fieldId]) {
+        typeCopy.fields[fieldId] = _.cloneDeep(typeCopy.fields[Object.keys(typeCopy.fields)[0]]);
+        typeCopy.fields[fieldId].originalName = fieldId;
+      }
+      console.log('hahaha', typeCopy.fields[fieldId]);
       typeCopy.fields[fieldId].name = newFieldId;
       typeCopy.fields[fieldId].description = newDescription;
       typeCopy.fields[fieldId].type = { ...typeCopy.fields[fieldId].type };
       typeCopy.fields[fieldId].type.name = newDataType;
+
       this.setState({ selectedType: typeCopy });
     };
 
     return (
       <>
         {!this.state.isEditing && (
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={() =>
-              this.setState({ isEditing: true, selectedType: { ...this.props.selectedType } })
-            }
-          >
+          <Button variant="contained" color="primary" onClick={this.enableEditing}>
             Edit
           </Button>
         )}
@@ -117,7 +134,13 @@ export default class TypeDoc extends React.Component<TypeDocProps> {
           <Description className="-doc-type" text={selectedType.description} />
         )}
         {renderTypesDef(selectedType, selectedEdgeID)}
-        {renderFields(selectedType, selectedEdgeID, this.state.isEditing, scalars)}
+        {renderFields(
+          selectedType,
+          selectedEdgeID,
+          this.state.isEditing,
+          scalars,
+          this.enableEditing,
+        )}
         {this.state.isEditing && (
           <>
             <Button
@@ -194,6 +217,7 @@ export default class TypeDoc extends React.Component<TypeDocProps> {
       selectedId: string,
       isEditing: boolean,
       scalars: string[],
+      enableEditing: Function,
     ) {
       let fields: any = Object.values(type.fields);
       fields = fields.filter(field => {
@@ -206,7 +230,12 @@ export default class TypeDoc extends React.Component<TypeDocProps> {
       if (fields.length === 0) return null;
       return (
         <div className="doc-category">
-          <AddNewButton selectedType={selectedType} onEditEdge={onEditEdge} scalars={scalars} />
+          <AddNewButton
+            selectedType={selectedType}
+            onEditEdge={onEditEdge}
+            scalars={scalars}
+            enableEditing={enableEditing}
+          />
           <div className="title">fields</div>
           {fields.map(field => {
             const props: any = {
@@ -218,10 +247,11 @@ export default class TypeDoc extends React.Component<TypeDocProps> {
               onClick: () => onSelectEdge(field.id),
             };
             if (field.id === selectedId) props.ref = 'selectedItem';
+
             return (
               <ListItem
                 {...props}
-                key={field.name}
+                key={field.originalName || field.name}
                 filter={filter}
                 selectedId={selectedId}
                 onTypeLink={onTypeLink}
@@ -257,7 +287,12 @@ const ListItem = ({
         <Input
           value={field.name}
           onChange={e => {
-            onEditEdge(field.name, e.currentTarget.value, field.description, field.type.name);
+            onEditEdge(
+              field.originalName,
+              e.currentTarget.value,
+              field.description,
+              field.type.name,
+            );
           }}
         />
       )}
@@ -284,7 +319,7 @@ const ListItem = ({
         <Select
           value={field.type.name}
           onChange={e => {
-            onEditEdge(field.name, field.name, field.description, e.target.value);
+            onEditEdge(field.originalName, field.name, field.description, e.target.value);
           }}
         >
           {scalars.map(s => (
@@ -298,7 +333,9 @@ const ListItem = ({
       {isEditing ? (
         <Input
           value={field.description}
-          onChange={e => onEditEdge(field.name, field.name, e.currentTarget.value, field.type.name)}
+          onChange={e =>
+            onEditEdge(field.originalName, field.name, e.currentTarget.value, field.type.name)
+          }
         />
       ) : (
         <Markdown text={field.description} className="description-box -field" />
@@ -307,10 +344,19 @@ const ListItem = ({
   );
 };
 
-const AddNewButton = ({ onEditEdge, scalars }: any) => (
+let counter = 1;
+
+const AddNewButton = ({ onEditEdge, scalars, enableEditing }: any) => (
   <Button
     variant="contained"
-    onClick={() => onEditEdge('test', 'test', 'test description', scalars[0])}
+    onClick={() => {
+      enableEditing();
+      setTimeout(() => {
+        //do this after state has been updated in enableEditing
+        const id = 'test' + counter++;
+        onEditEdge(id, id, id + ' description', scalars[0]);
+      });
+    }}
   >
     New field
   </Button>

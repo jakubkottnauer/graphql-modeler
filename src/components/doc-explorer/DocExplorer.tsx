@@ -42,11 +42,20 @@ export default class DocExplorer extends React.Component<DocExplorerProps> {
     const { navStack } = state;
     const lastNav = navStack[navStack.length - 1];
     const lastTypeID = lastNav.type ? lastNav.type.id : null;
+
+    // if type with the lastTypeID no longer exists -> modify navstack because it has been renamed
+    if (lastTypeID && !typeGraph.nodes[lastTypeID]) {
+      const type = typeGraph.nodes[selectedTypeID];
+      const newNavStack = [...navStack];
+      newNavStack[newNavStack.length - 1] = { title: type.name, type, searchValue: null };
+
+      return { navStack: newNavStack, typeForInfoPopover: null };
+    }
+
     if (selectedTypeID !== lastTypeID) {
       if (selectedTypeID == null) {
         return { navStack: [initialNav], typeForInfoPopover: null };
       }
-
       const type = typeGraph.nodes[selectedTypeID];
       const newNavStack = [...navStack, { title: type.name, type, searchValue: null }];
 
@@ -123,7 +132,6 @@ export default class DocExplorer extends React.Component<DocExplorerProps> {
           filter={currentNav.searchValue}
           onTypeLink={this.handleTypeLink}
           onSelectEdge={onSelectEdge}
-          onEditEdge={this.props.onEditEdge}
           onEditType={this.props.onEditType}
           scalars={this.props.scalars}
         />

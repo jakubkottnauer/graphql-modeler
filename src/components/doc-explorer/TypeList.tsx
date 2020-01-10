@@ -15,13 +15,38 @@ interface TypeListProps {
   filter: string;
   onFocusType: (any) => void;
   onTypeLink: (any) => void;
-  onEditType: (typeId: string, newTypeId: string, newDescription: string) => void;
+  onEditType: (typeId: string, typeData: any) => void;
 }
+
+const createNewType = (id: string) => ({
+  kind: 'OBJECT',
+  name: id,
+  description: 'test',
+  fields: [
+    {
+      name: 'id',
+      description: 'new field',
+      args: [],
+      type: {
+        kind: 'NON_NULL',
+        name: null,
+        ofType: { kind: 'SCALAR', name: 'ID', ofType: null },
+      },
+      isDeprecated: false,
+      deprecationReason: null,
+    },
+  ],
+  inputFields: null,
+  interfaces: [{ kind: 'INTERFACE', name: 'Node', ofType: null }],
+  enumValues: null,
+  possibleTypes: null,
+});
+
+let counter = 1;
 
 export default class TypeList extends React.Component<TypeListProps> {
   render() {
     const { typeGraph, filter, onFocusType, onTypeLink } = this.props;
-    console.log(typeGraph);
     if (typeGraph === null) return null;
 
     const rootType = typeGraph.nodes[typeGraph.rootId];
@@ -34,7 +59,7 @@ export default class TypeList extends React.Component<TypeListProps> {
     return (
       <div className="doc-explorer-type-list">
         <Button
-          onClick={() => this.props.onEditType('Test', 'Test', 'test description')}
+          onClick={() => this.props.onEditType('Test', createNewType('NewType' + counter++))}
           variant="contained"
           color="primary"
         >

@@ -6,7 +6,7 @@ import {
   buildSchema,
   IntrospectionQuery,
 } from 'graphql/utilities';
-
+import * as _ from 'lodash';
 import { getSchema, extractTypeId } from '../introspection';
 import { SVGRender, getTypeGraph } from '../graph/';
 import { WorkerCallback } from '../utils/types';
@@ -105,10 +105,10 @@ export default class Voyager extends React.Component<VoyagerProps> {
     this.fetchIntrospection({ data: introspection });
   }
 
-  fetchIntrospection(introspection = null) {
+  fetchIntrospection(introspection = { data: null }) {
     const displayOptions = normalizeDisplayOptions(this.props.displayOptions);
 
-    if (introspection) {
+    if (introspection.data) {
       this.updateIntrospection(introspection, displayOptions);
       return;
     }
@@ -331,16 +331,48 @@ export default class Voyager extends React.Component<VoyagerProps> {
   handleEditType = (typeId: string, typeData: any) => {
     if (!typeId) return;
     const typeName = typeId.split('::')[1];
-    const data = { ...this.state.introspectionData };
+    const data = _.cloneDeep(this.state.introspectionData);
     const typeIndex = data.data.__schema.types.findIndex(
       t => t.kind === 'OBJECT' && t.name === typeName,
     );
     if (typeIndex > -1) {
       // edit existing type
       data.data.__schema.types[typeIndex].name = typeData.name;
-
-      // data.data.__schema.types[0].fields[data.data.__schema.types[0].fields.length - 1].type.name =
-      //   typeData.name;
+      // update fields
+      const fieldKeys = Object.keys(typeData.fields);
+      data.data.__schema.types[typeIndex].fields = data.data.__schema.types[typeIndex].fields.map(
+        oldField => {
+          const newField = typeData.fields[oldField.name];
+          if (newField) {
+            //existing field has been renamed
+            console.log(' old new', oldField, newField);
+            const field = _.cloneDeep(oldField);
+            field.name = newField.name;
+            field.description = newField.description;
+            field.type.ofType.name = newField.type.name;
+            return field;
+          } else {
+            // a field has been deleted
+            return null;
+          }
+        },
+      );
+      // remove deleted fields
+      data.data.__schema.types[typeIndex].fields = data.data.__schema.types[
+        typeIndex
+      ].fields.filter(x => x);
+      // process new fields
+      for (const newFieldKey of fieldKeys) {
+        if (!data.data.__schema.types[typeIndex].fields.find(x => x.name === newFieldKey)) {
+          // a new field has been added -> add it to typegraph
+          const newField = typeData.fields[newFieldKey];
+          const field = _.cloneDeep(data.data.__schema.types[typeIndex].fields[0]);
+          field.name = newField.name;
+          field.description = newField.description;
+          field.type.ofType.name = newField.type.name;
+          data.data.__schema.types[typeIndex].fields.push(field);
+        }
+      }
 
       // traverse the graph and change the type's name everywhere
       for (let i = 0; i < data.data.__schema.types.length; i++) {
@@ -354,66 +386,36 @@ export default class Voyager extends React.Component<VoyagerProps> {
         }
       }
 
+      // update description
       data.data.__schema.types[typeIndex].description = typeData.description;
 
+      // select the modified type as current type
       this.setState({ selectedTypeID: 'TYPE::' + typeData.name });
-
-      // data.data.__schema.types[typeIndex].fields = Object.values(typeData.fields);
     } else {
       // // create a new type
-      // data.data.__schema.types = [
-      //   ...data.data.__schema.types,
-      //   {
-      //     kind: 'OBJECT',
-      //     name: newTypeId,
-      //     description: newDescription,
-      //     fields: [
-      //       {
-      //         name: 'id',
-      //         description: 'new field',
-      //         args: [],
-      //         type: {
-      //           kind: 'NON_NULL',
-      //           name: null,
-      //           ofType: { kind: 'SCALAR', name: 'ID', ofType: null },
-      //         },
-      //         isDeprecated: false,
-      //         deprecationReason: null,
-      //       },
-      //     ],
-      //     inputFields: null,
-      //     interfaces: [{ kind: 'INTERFACE', name: 'Node', ofType: null }],
-      //     enumValues: null,
-      //     possibleTypes: null,
-      //   },
-      // ];
-      // // update Root
-      // data.data.__schema.types[0].fields = [
-      //   ...data.data.__schema.types[0].fields,
-      //   {
-      //     name: newTypeId.toLowerCase(),
-      //     description: null,
-      //     args: [
-      //       {
-      //         name: 'id',
-      //         description: null,
-      //         type: { kind: 'SCALAR', name: 'ID', ofType: null },
-      //         defaultValue: null,
-      //       },
-      //       {
-      //         name: 'vehicleID',
-      //         description: null,
-      //         type: { kind: 'SCALAR', name: 'ID', ofType: null },
-      //         defaultValue: null,
-      //       },
-      //     ],
-      //     type: {
-      //       kind: 'OBJECT',
-      //       name: newTypeId,
-      //       ofType: null,
-      //     },
-      //   },
-      // ];
+      data.data.__schema.types = [...data.data.__schema.types, typeData];
+
+      // update Root
+      data.data.__schema.types[0].fields = [
+        ...data.data.__schema.types[0].fields,
+        {
+          name: typeData.name.toLowerCase(),
+          description: null,
+          args: [
+            {
+              name: 'id',
+              description: null,
+              type: { kind: 'SCALAR', name: 'ID', ofType: null },
+              defaultValue: null,
+            },
+          ],
+          type: {
+            kind: 'OBJECT',
+            name: typeData.name,
+            ofType: null,
+          },
+        },
+      ];
     }
     console.log('updated data', data);
     console.log(JSON.stringify(data));
