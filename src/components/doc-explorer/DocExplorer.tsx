@@ -27,7 +27,7 @@ interface DocExplorerProps {
     newDataType: string,
   ) => void;
   onEditType: (typeId: string, typeData: any) => void;
-
+  onDeleteType: (typeId) => void;
   scalars: string[];
 }
 
@@ -44,7 +44,7 @@ export default class DocExplorer extends React.Component<DocExplorerProps> {
     const lastTypeID = lastNav.type ? lastNav.type.id : null;
 
     // if type with the lastTypeID no longer exists -> modify navstack because it has been renamed
-    if (lastTypeID && !typeGraph.nodes[lastTypeID]) {
+    if (selectedTypeID && lastTypeID && !typeGraph.nodes[lastTypeID]) {
       const type = typeGraph.nodes[selectedTypeID];
       const newNavStack = [...navStack];
       newNavStack[newNavStack.length - 1] = { title: type.name, type, searchValue: null };
@@ -134,6 +134,7 @@ export default class DocExplorer extends React.Component<DocExplorerProps> {
           onSelectEdge={onSelectEdge}
           onEditType={this.props.onEditType}
           scalars={this.props.scalars}
+          onDeleteType={this.props.onDeleteType}
         />
       );
     }

@@ -24,6 +24,7 @@ interface TypeDocProps {
   filter: string;
   onSelectEdge: (string) => void;
   onTypeLink: (any) => void;
+  onDeleteType: (typeId) => void;
   // onEditEdge: (
   //   typeId: string,
   //   edgeId: string,
@@ -82,20 +83,18 @@ export default class TypeDoc extends React.Component<TypeDocProps> {
       filter,
       onSelectEdge,
       onTypeLink,
-
+      onDeleteType,
       scalars,
       onEditType,
     } = this.props;
 
     const selectedType = this.state.isEditing ? this.state.selectedType : this.props.selectedType;
-    console.log('selected type!', selectedType);
     const onEditEdge = (fieldId, newFieldId, newDescription, newDataType) => {
       const typeCopy = _.cloneDeep(this.state.selectedType);
       if (!typeCopy.fields[fieldId]) {
         typeCopy.fields[fieldId] = _.cloneDeep(typeCopy.fields[Object.keys(typeCopy.fields)[0]]);
         typeCopy.fields[fieldId].originalName = fieldId;
       }
-      console.log('hahaha', typeCopy.fields[fieldId]);
       typeCopy.fields[fieldId].name = newFieldId;
       typeCopy.fields[fieldId].description = newDescription;
       typeCopy.fields[fieldId].type = { ...typeCopy.fields[fieldId].type };
@@ -111,6 +110,9 @@ export default class TypeDoc extends React.Component<TypeDocProps> {
             Edit
           </Button>
         )}
+        <Button variant="contained" color="secondary" onClick={() => onDeleteType(selectedType.id)}>
+          Delete type
+        </Button>
         {this.state.isEditing ? (
           <>
             <Input

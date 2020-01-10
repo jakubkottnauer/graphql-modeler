@@ -150,7 +150,6 @@ export default class Voyager extends React.Component<VoyagerProps> {
       displayOptions.skipDeprecated,
     );
     const typeGraph = getTypeGraph(schema, displayOptions.rootType, displayOptions.hideRoot);
-    console.log('new typegraph', typeGraph);
 
     if (introspectionData) {
       const graphqlSchemaObj = buildClientSchema(introspectionData.data);
@@ -163,8 +162,6 @@ export default class Voyager extends React.Component<VoyagerProps> {
       schema,
       typeGraph,
       displayOptions,
-      // selectedTypeID: null,
-      // selectedEdgeID: null,
     });
   }
 
@@ -228,6 +225,7 @@ export default class Voyager extends React.Component<VoyagerProps> {
             onSelectEdge={this.handleSelectEdge}
             onEditEdge={this.handleEditEdge}
             onEditType={this.handleEditType}
+            onDeleteType={this.handleDeleteType}
             scalars={[...scalars, ...types]}
           />
           <PoweredBy />
@@ -345,7 +343,6 @@ export default class Voyager extends React.Component<VoyagerProps> {
           const newField = typeData.fields[oldField.name];
           if (newField) {
             //existing field has been renamed
-            console.log(' old new', oldField, newField);
             const field = _.cloneDeep(oldField);
             field.name = newField.name;
             field.description = newField.description;
@@ -375,22 +372,9 @@ export default class Voyager extends React.Component<VoyagerProps> {
       }
 
       // traverse the graph and change the type's name everywhere
-      for (let i = 0; i < data.data.__schema.types.length; i++) {
-        if (!data.data.__schema.types[i].fields) {
-          continue;
-        }
-        for (let j = 0; j < data.data.__schema.types[i].fields.length; j++) {
-          if (data.data.__schema.types[i].fields[j].type.name == typeName) {
-            data.data.__schema.types[i].fields[j].type.name = typeData.name;
-          }
-        }
-      }
-
+      replaceTypeWith(data, typeName, typeData.name);
       // update description
       data.data.__schema.types[typeIndex].description = typeData.description;
-
-      // select the modified type as current type
-      this.setState({ selectedTypeID: 'TYPE::' + typeData.name });
     } else {
       // // create a new type
       data.data.__schema.types = [...data.data.__schema.types, typeData];
@@ -417,8 +401,35 @@ export default class Voyager extends React.Component<VoyagerProps> {
         },
       ];
     }
+    // select the modified type as current type
+    this.setState({ selectedTypeID: 'TYPE::' + typeData.name });
+    //@ts-ignore
+    this.updateIntrospection(data, this.state.displayOptions);
+  };
+
+  handleDeleteType = (typeId: string) => {
+    if (!typeId) return;
+    const typeName = typeId.split('::')[1];
+    const data = { ...this.state.introspectionData };
+
+    const typeIndex = data.data.__schema.types.findIndex(
+      t => t.kind === 'OBJECT' && t.name === typeName,
+    );
+
+    //delete the type itself
+    data.data.__schema.types.splice(typeIndex, 1);
+
+    // find dependencies and update them with a scalar
+    const scalars = this.state.introspectionData
+      ? this.state.introspectionData.data.__schema.types
+          .filter(x => x.kind === 'SCALAR')
+          .map(x => x.name)
+      : [];
+
+    replaceTypeWith(data, typeName, scalars[0]);
+    // select the modified type as current type
+    this.setState({ selectedTypeID: null });
     console.log('updated data', data);
-    console.log(JSON.stringify(data));
     //@ts-ignore
     this.updateIntrospection(data, this.state.displayOptions);
   };
@@ -431,4 +442,20 @@ export default class Voyager extends React.Component<VoyagerProps> {
 // Duck-type promise detection.
 function isPromise(value) {
   return typeof value === 'object' && typeof value.then === 'function';
+}
+
+function replaceTypeWith(data: any, typeToReplace: string, newType: string | null) {
+  for (let i = 0; i < data.data.__schema.types.length; i++) {
+    if (!data.data.__schema.types[i].fields) {
+      continue;
+    }
+    for (let j = 0; j < data.data.__schema.types[i].fields.length; j++) {
+      if (data.data.__schema.types[i].fields[j].type.name == typeToReplace) {
+        data.data.__schema.types[i].fields[j].type.name = newType;
+      }
+      if (data.data.__schema.types[i].fields[j].type?.ofType?.name == typeToReplace) {
+        data.data.__schema.types[i].fields[j].type.ofType.name = newType;
+      }
+    }
+  }
 }
