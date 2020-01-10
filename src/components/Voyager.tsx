@@ -1,4 +1,11 @@
-import { introspectionQuery } from 'graphql/utilities';
+import {
+  introspectionQuery,
+  buildClientSchema,
+  printSchema,
+  introspectionFromSchema,
+  buildSchema,
+  IntrospectionQuery,
+} from 'graphql/utilities';
 
 import { getSchema, extractTypeId } from '../introspection';
 import { SVGRender, getTypeGraph } from '../graph/';
@@ -89,11 +96,22 @@ export default class Voyager extends React.Component<VoyagerProps> {
   }
 
   componentDidMount() {
-    this.fetchIntrospection();
+    const persistedSchema = localStorage.getItem('schema');
+    let introspection: IntrospectionQuery | null = null;
+    if (persistedSchema) {
+      introspection = introspectionFromSchema(buildSchema(persistedSchema));
+    }
+
+    this.fetchIntrospection({ data: introspection });
   }
 
-  fetchIntrospection() {
+  fetchIntrospection(introspection = null) {
     const displayOptions = normalizeDisplayOptions(this.props.displayOptions);
+
+    if (introspection) {
+      this.updateIntrospection(introspection, displayOptions);
+      return;
+    }
 
     if (typeof this.props.introspection !== 'function') {
       this.updateIntrospection(this.props.introspection, displayOptions);
@@ -133,6 +151,13 @@ export default class Voyager extends React.Component<VoyagerProps> {
     );
     const typeGraph = getTypeGraph(schema, displayOptions.rootType, displayOptions.hideRoot);
     console.log('new typegraph', typeGraph);
+
+    if (introspectionData) {
+      const graphqlSchemaObj = buildClientSchema(introspectionData.data);
+      const sdlString = printSchema(graphqlSchemaObj);
+      localStorage.setItem('schema', sdlString);
+    }
+
     this.setState({
       introspectionData,
       schema,
@@ -189,6 +214,7 @@ export default class Voyager extends React.Component<VoyagerProps> {
     const types = this.state.typeGraph
       ? Object.values(this.state.typeGraph.nodes).map((x: any) => x.name)
       : [];
+
     return (
       <div className="doc-panel">
         <div className="contents">
@@ -302,7 +328,7 @@ export default class Voyager extends React.Component<VoyagerProps> {
     this.updateIntrospection(data, this.state.displayOptions);
   };
 
-  handleEditType = (typeId: string, newTypeId: string, newDescription: string) => {
+  handleEditType = (typeId: string, typeData: any) => {
     if (!typeId) return;
     const typeName = typeId.split('::')[1];
     const data = { ...this.state.introspectionData };
@@ -311,64 +337,86 @@ export default class Voyager extends React.Component<VoyagerProps> {
     );
     if (typeIndex > -1) {
       // edit existing type
-    } else {
-      // create a new type
-      data.data.__schema.types = [
-        ...data.data.__schema.types,
-        {
-          kind: 'OBJECT',
-          name: newTypeId,
-          description: newDescription,
-          fields: [
-            {
-              name: 'id',
-              description: 'new field',
-              args: [],
-              type: {
-                kind: 'NON_NULL',
-                name: null,
-                ofType: { kind: 'SCALAR', name: 'ID', ofType: null },
-              },
-              isDeprecated: false,
-              deprecationReason: null,
-            },
-          ],
-          inputFields: null,
-          interfaces: [{ kind: 'INTERFACE', name: 'Node', ofType: null }],
-          enumValues: null,
-          possibleTypes: null,
-        },
-      ];
+      data.data.__schema.types[typeIndex].name = typeData.name;
 
-      // update Root
-      data.data.__schema.types[0].fields = [
-        ...data.data.__schema.types[0].fields,
-        {
-          name: newTypeId.toLowerCase(),
-          description: null,
-          args: [
-            {
-              name: 'id',
-              description: null,
-              type: { kind: 'SCALAR', name: 'ID', ofType: null },
-              defaultValue: null,
-            },
-            {
-              name: 'vehicleID',
-              description: null,
-              type: { kind: 'SCALAR', name: 'ID', ofType: null },
-              defaultValue: null,
-            },
-          ],
-          type: {
-            kind: 'OBJECT',
-            name: newTypeId,
-            ofType: null,
-          },
-        },
-      ];
+      // data.data.__schema.types[0].fields[data.data.__schema.types[0].fields.length - 1].type.name =
+      //   typeData.name;
+
+      // traverse the graph and change the type's name everywhere
+      for (let i = 0; i < data.data.__schema.types.length; i++) {
+        if (!data.data.__schema.types[i].fields) {
+          continue;
+        }
+        for (let j = 0; j < data.data.__schema.types[i].fields.length; j++) {
+          if (data.data.__schema.types[i].fields[j].type.name == typeName) {
+            data.data.__schema.types[i].fields[j].type.name = typeData.name;
+          }
+        }
+      }
+
+      data.data.__schema.types[typeIndex].description = typeData.description;
+
+      this.setState({ selectedTypeID: 'TYPE::' + typeData.name });
+
+      // data.data.__schema.types[typeIndex].fields = Object.values(typeData.fields);
+    } else {
+      // // create a new type
+      // data.data.__schema.types = [
+      //   ...data.data.__schema.types,
+      //   {
+      //     kind: 'OBJECT',
+      //     name: newTypeId,
+      //     description: newDescription,
+      //     fields: [
+      //       {
+      //         name: 'id',
+      //         description: 'new field',
+      //         args: [],
+      //         type: {
+      //           kind: 'NON_NULL',
+      //           name: null,
+      //           ofType: { kind: 'SCALAR', name: 'ID', ofType: null },
+      //         },
+      //         isDeprecated: false,
+      //         deprecationReason: null,
+      //       },
+      //     ],
+      //     inputFields: null,
+      //     interfaces: [{ kind: 'INTERFACE', name: 'Node', ofType: null }],
+      //     enumValues: null,
+      //     possibleTypes: null,
+      //   },
+      // ];
+      // // update Root
+      // data.data.__schema.types[0].fields = [
+      //   ...data.data.__schema.types[0].fields,
+      //   {
+      //     name: newTypeId.toLowerCase(),
+      //     description: null,
+      //     args: [
+      //       {
+      //         name: 'id',
+      //         description: null,
+      //         type: { kind: 'SCALAR', name: 'ID', ofType: null },
+      //         defaultValue: null,
+      //       },
+      //       {
+      //         name: 'vehicleID',
+      //         description: null,
+      //         type: { kind: 'SCALAR', name: 'ID', ofType: null },
+      //         defaultValue: null,
+      //       },
+      //     ],
+      //     type: {
+      //       kind: 'OBJECT',
+      //       name: newTypeId,
+      //       ofType: null,
+      //     },
+      //   },
+      // ];
     }
     console.log('updated data', data);
+    console.log(JSON.stringify(data));
     //@ts-ignore
     this.updateIntrospection(data, this.state.displayOptions);
   };

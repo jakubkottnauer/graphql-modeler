@@ -26,7 +26,7 @@ interface DocExplorerProps {
     newDescription: string,
     newDataType: string,
   ) => void;
-  onEditType: (typeId: string, newTypeId: string, newDescription: string) => void;
+  onEditType: (typeId: string, typeData: any) => void;
 
   scalars: string[];
 }
@@ -124,6 +124,7 @@ export default class DocExplorer extends React.Component<DocExplorerProps> {
           onTypeLink={this.handleTypeLink}
           onSelectEdge={onSelectEdge}
           onEditEdge={this.props.onEditEdge}
+          onEditType={this.props.onEditType}
           scalars={this.props.scalars}
         />
       );

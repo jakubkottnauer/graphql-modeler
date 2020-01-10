@@ -1,6 +1,7 @@
 import * as _ from 'lodash';
 import * as React from 'react';
 import * as classNames from 'classnames';
+import Button from '@material-ui/core/Button';
 import { isMatch } from '../../utils';
 
 import './TypeList.css';
@@ -32,9 +33,13 @@ export default class TypeList extends React.Component<TypeListProps> {
 
     return (
       <div className="doc-explorer-type-list">
-        <button onClick={() => this.props.onEditType('Test', 'Test', 'test description')}>
+        <Button
+          onClick={() => this.props.onEditType('Test', 'Test', 'test description')}
+          variant="contained"
+          color="primary"
+        >
           Add new type
-        </button>
+        </Button>
         {rootType && renderItem(rootType, '-root')}
         {_.map(types, type => renderItem(type, ''))}
       </div>

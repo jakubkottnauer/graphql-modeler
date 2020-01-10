@@ -44,7 +44,6 @@ export default class GraphViewport extends React.Component<GraphViewportProps> {
     if (typeGraph !== state.typeGraph || displayOptions !== state.displayOptions) {
       const prevZoom = state.svgViewport ? state.svgViewport.zoomer.getZoom() : null;
       const prevPan = state.svgViewport ? state.svgViewport.zoomer.getPan() : null;
-      console.log('WILL REVERT TO', prevZoom, prevPan);
       return { typeGraph, displayOptions, svgViewport: null, prevZoom, prevPan };
     }
 
@@ -76,19 +75,10 @@ export default class GraphViewport extends React.Component<GraphViewportProps> {
       svgViewport.selectEdgeById(selectedEdgeID);
     }
 
-    // const prevZoom = prevState.svgViewport ? prevState.svgViewport.zoomer.getZoom() : null;
-    // const prevPan = prevState.svgViewport ? prevState.svgViewport.zoomer.getPan() : null;
-    // console.log('PREv VALS', prevPan, prevZoom);
-
     if (svgViewport !== prevState.svgViewport) {
       if (this.state.prevPan && this.state.prevZoom && selectedTypeID) {
         setTimeout(() => {
           svgViewport.focusElement(selectedTypeID);
-          // svgViewport.animatePanAndZoom(
-          //   this.state.prevPan.x,
-          //   this.state.prevPan.y,
-          //   this.state.prevZoom,
-          // );
         }, 10);
       }
     }

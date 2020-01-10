@@ -1,6 +1,10 @@
 import * as _ from 'lodash';
 import * as React from 'react';
 import * as classNames from 'classnames';
+import Button from '@material-ui/core/Button';
+import Select from '@material-ui/core/Select';
+import Input from '@material-ui/core/Input';
+import MenuItem from '@material-ui/core/MenuItem';
 
 import './TypeDoc.css';
 
@@ -27,10 +31,16 @@ interface TypeDocProps {
     newDescription: string,
     newDataType: string,
   ) => void;
+  onEditType: (typeId: string, typeData: any) => void;
   scalars: string[];
 }
 
 export default class TypeDoc extends React.Component<TypeDocProps> {
+  state = {
+    isEditing: false,
+    selectedType: null,
+  };
+
   componentDidUpdate(prevProps: TypeDocProps) {
     if (this.props.selectedEdgeID !== prevProps.selectedEdgeID) {
       this.ensureActiveVisible();
@@ -50,21 +60,81 @@ export default class TypeDoc extends React.Component<TypeDocProps> {
 
   render() {
     const {
-      selectedType,
       selectedEdgeID,
       typeGraph,
       filter,
       onSelectEdge,
       onTypeLink,
-      onEditEdge,
+
       scalars,
+      onEditType,
     } = this.props;
+
+    const selectedType = this.state.isEditing ? this.state.selectedType : this.props.selectedType;
+    console.log('selected type!', selectedType);
+    const onEditEdge = (fieldId, newFieldId, newDescription, newDataType) => {
+      const typeCopy = { ...this.state.selectedType };
+      typeCopy.fields[fieldId].name = newFieldId;
+      typeCopy.fields[fieldId].description = newDescription;
+      typeCopy.fields[fieldId].type = { ...typeCopy.fields[fieldId].type };
+      typeCopy.fields[fieldId].type.name = newDataType;
+      this.setState({ selectedType: typeCopy });
+    };
 
     return (
       <>
-        <Description className="-doc-type" text={selectedType.description} />
+        {!this.state.isEditing && (
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() =>
+              this.setState({ isEditing: true, selectedType: { ...this.props.selectedType } })
+            }
+          >
+            Edit
+          </Button>
+        )}
+        {this.state.isEditing ? (
+          <>
+            <Input
+              value={selectedType.name}
+              onChange={e =>
+                this.setState({
+                  selectedType: { ...this.state.selectedType, name: e.currentTarget.value },
+                })
+              }
+            />
+            <Input
+              value={selectedType.description}
+              onChange={e =>
+                this.setState({
+                  selectedType: { ...this.state.selectedType, description: e.currentTarget.value },
+                })
+              }
+            />
+          </>
+        ) : (
+          <Description className="-doc-type" text={selectedType.description} />
+        )}
         {renderTypesDef(selectedType, selectedEdgeID)}
-        {renderFields(selectedType, selectedEdgeID, scalars)}
+        {renderFields(selectedType, selectedEdgeID, this.state.isEditing, scalars)}
+        {this.state.isEditing && (
+          <>
+            <Button
+              variant="contained"
+              onClick={() => {
+                onEditType(this.props.selectedType.id, selectedType);
+                this.setState({ isEditing: false, selectedType: null });
+              }}
+              color="primary"
+            >
+              Save changes
+            </Button>
+            <Button variant="contained" onClick={() => this.setState({ isEditing: false })}>
+              Cancel
+            </Button>
+          </>
+        )}
       </>
     );
 
@@ -119,7 +189,12 @@ export default class TypeDoc extends React.Component<TypeDocProps> {
       );
     }
 
-    function renderFields(type: SimplifiedTypeWithIDs, selectedId: string, scalars: string[]) {
+    function renderFields(
+      type: SimplifiedTypeWithIDs,
+      selectedId: string,
+      isEditing: boolean,
+      scalars: string[],
+    ) {
       let fields: any = Object.values(type.fields);
       fields = fields.filter(field => {
         const args: any = Object.values(field.args);
@@ -146,6 +221,7 @@ export default class TypeDoc extends React.Component<TypeDocProps> {
             return (
               <ListItem
                 {...props}
+                key={field.name}
                 filter={filter}
                 selectedId={selectedId}
                 onTypeLink={onTypeLink}
@@ -153,6 +229,7 @@ export default class TypeDoc extends React.Component<TypeDocProps> {
                 onEditEdge={onEditEdge}
                 field={field}
                 scalars={scalars}
+                isEditing={isEditing}
               />
             );
           })}
@@ -166,34 +243,21 @@ const ListItem = ({
   filter,
   selectedId,
   onTypeLink,
-  selectedType,
   onEditEdge,
   field,
   key,
   className,
   scalars,
-  ...props
+  isEditing,
 }: any) => {
-  const [isEditing, setIsEditing] = React.useState(false);
-  const onClick = () => {
-    setIsEditing(true);
-    props.onClick();
-  };
-
   return (
-    <div key={key} className={className} onClick={onClick}>
+    <div key={key} className={className}>
       {!isEditing && <a className="field-name">{highlightTerm(field.name, filter)}</a>}
       {isEditing && (
-        <input
+        <Input
           value={field.name}
           onChange={e => {
-            onEditEdge(
-              selectedType.id,
-              field.name,
-              e.currentTarget.value,
-              field.description,
-              field.type.name,
-            );
+            onEditEdge(field.name, e.currentTarget.value, field.description, field.type.name);
           }}
         />
       )}
@@ -217,43 +281,37 @@ const ListItem = ({
       </span>
       {!isEditing && <WrappedTypeName container={field} onTypeLink={onTypeLink} />}
       {isEditing && (
-        <select
+        <Select
           value={field.type.name}
           onChange={e => {
-            console.log(e.currentTarget.value);
-            onEditEdge(
-              selectedType.id,
-              field.name,
-              field.name,
-              field.description,
-              e.currentTarget.value,
-            );
+            onEditEdge(field.name, field.name, field.description, e.target.value);
           }}
         >
           {scalars.map(s => (
-            <option value={s} key={s}>
+            <MenuItem value={s} key={s}>
               {s}
-            </option>
+            </MenuItem>
           ))}
-        </select>
+        </Select>
       )}
       {field.isDeprecated && <span className="doc-alert-text"> DEPRECATED</span>}
-      <Markdown
-        text={field.description}
-        className="description-box -field"
-        isEditing={isEditing}
-        onChange={(text: string) => {
-          onEditEdge(selectedType.id, field.name, field.name, text, field.type.name);
-        }}
-      />
+      {isEditing ? (
+        <Input
+          value={field.description}
+          onChange={e => onEditEdge(field.name, field.name, e.currentTarget.value, field.type.name)}
+        />
+      ) : (
+        <Markdown text={field.description} className="description-box -field" />
+      )}
     </div>
   );
 };
 
-const AddNewButton = ({ onEditEdge, selectedType, scalars }: any) => (
-  <button
-    onClick={() => onEditEdge(selectedType.id, 'test', 'test', 'test description', scalars[0])}
+const AddNewButton = ({ onEditEdge, scalars }: any) => (
+  <Button
+    variant="contained"
+    onClick={() => onEditEdge('test', 'test', 'test description', scalars[0])}
   >
-    New property
-  </button>
+    New field
+  </Button>
 );
