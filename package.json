@@ -1,7 +1,7 @@
 {
-  "name": "graphql-voyager",
+  "name": "graphql-modeler",
   "version": "1.0.0-rc.27",
-  "description": "GraphQL introspection viewer",
+  "description": "GraphQL introspection viewer and modeler",
   "main": "dist/voyager.lib.js",
   "types": "typings/index.d.ts",
   "scripts": {
@@ -82,6 +82,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jakubkottnauer/graphql-voyager.git"
+    "url": "git+https://github.com/jakubkottnauer/graphql-modeler.git"
   }
 }
