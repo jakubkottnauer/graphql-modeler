@@ -9,8 +9,19 @@ import MenuItem from '@material-ui/core/MenuItem';
 import DeleteIcon from '@material-ui/icons/Delete';
 import AddIcon from '@material-ui/icons/Add';
 import SaveIcon from '@material-ui/icons/Save';
+import DragIndicatorIcon from '@material-ui/icons/DragIndicator';
 
 import './TypeDoc.css';
+import {
+  DndProvider,
+  DropTarget,
+  XYCoord,
+  DropTargetConnector,
+  DragSource,
+  DragSourceConnector,
+  DragSourceMonitor,
+} from 'react-dnd';
+import Backend from 'react-dnd-html5-backend';
 
 import { SimplifiedTypeWithIDs } from '../../introspection/types';
 import { isMatch, highlightTerm } from '../../utils';
@@ -33,35 +44,27 @@ interface TypeDocProps {
   scalars: string[];
 }
 
-export default class TypeDoc extends React.Component<TypeDocProps> {
-  state = {
-    isEditing: false,
-    selectedType: null,
-  };
+const TypeDoc = ({
+  selectedEdgeID,
+  typeGraph,
+  filter,
+  onSelectEdge,
+  onTypeLink,
+  onDeleteType,
+  scalars,
+  onEditType,
+  ...props
+}: TypeDocProps) => {
+  const [isEditing, setIsEditing] = React.useState(false);
+  const [selectedType, setSelectedType] = React.useState<any | null>(null);
+  const selectedItemRef = React.useRef<HTMLElement>();
 
-  componentDidUpdate(prevProps: TypeDocProps) {
-    if (this.props.selectedEdgeID !== prevProps.selectedEdgeID) {
-      this.ensureActiveVisible();
-    }
-  }
-
-  componentDidMount() {
-    this.ensureActiveVisible();
-  }
-
-  ensureActiveVisible() {
-    let itemComponent = this.refs['selectedItem'] as HTMLElement;
-    if (!itemComponent) return;
-
-    itemComponent.scrollIntoViewIfNeeded();
-  }
-
-  enableEditing = () => {
-    if (this.state.isEditing) {
+  const enableEditing = () => {
+    if (isEditing) {
       return;
     }
 
-    const type = _.cloneDeep(this.props.selectedType);
+    const type = _.cloneDeep(props.selectedType);
 
     type.fields = Object.values(type.fields).reduce(
       (acc: any, f: any, idx) => ({
@@ -70,319 +73,300 @@ export default class TypeDoc extends React.Component<TypeDocProps> {
       }),
       {},
     );
-    this.setState({ isEditing: true, selectedType: type });
+
+    setIsEditing(true);
+    setSelectedType(type);
   };
 
-  render() {
-    const {
-      selectedEdgeID,
-      typeGraph,
-      filter,
-      onSelectEdge,
-      onTypeLink,
-      onDeleteType,
-      scalars,
-      onEditType,
-    } = this.props;
+  React.useEffect(() => {
+    selectedItemRef.current?.scrollIntoViewIfNeeded();
+  }, [selectedItemRef.current]);
 
-    const selectedType = this.state.isEditing ? this.state.selectedType : this.props.selectedType;
-    const onEditEdge = (fieldId, newFieldId, newDescription, newDataType) => {
-      const typeCopy = _.cloneDeep(this.state.selectedType);
-      if (!typeCopy.fields[fieldId]) {
-        typeCopy.fields[fieldId] = _.cloneDeep(typeCopy.fields[Object.keys(typeCopy.fields)[0]]);
-        typeCopy.fields[fieldId].originalName = fieldId;
-      }
-      typeCopy.fields[fieldId].name = newFieldId;
-      typeCopy.fields[fieldId].description = newDescription;
-      typeCopy.fields[fieldId].type = { ...typeCopy.fields[fieldId].type };
-      typeCopy.fields[fieldId].type.name = newDataType;
+  const usedSelectedType = isEditing ? selectedType : props.selectedType;
+  const onEditEdge = (fieldId, newFieldId, newDescription, newDataType) => {
+    const typeCopy = _.cloneDeep(selectedType);
+    if (!typeCopy.fields[fieldId]) {
+      typeCopy.fields[fieldId] = _.cloneDeep(typeCopy.fields[Object.keys(typeCopy.fields)[0]]);
+      typeCopy.fields[fieldId].originalName = fieldId;
+      typeCopy.fields[fieldId].originalPosition = Object.keys(typeCopy.fields).length;
+    }
+    typeCopy.fields[fieldId].name = newFieldId;
+    typeCopy.fields[fieldId].description = newDescription;
+    typeCopy.fields[fieldId].type = { ...typeCopy.fields[fieldId].type };
+    typeCopy.fields[fieldId].type.name = newDataType;
 
-      this.setState({ selectedType: typeCopy });
-    };
+    setSelectedType(typeCopy);
+  };
 
-    const onDeleteEdge = fieldId => {
-      const typeCopy = _.cloneDeep(this.state.selectedType);
-      delete typeCopy.fields[fieldId];
-      this.setState({ selectedType: typeCopy });
-    };
-
-    return (
-      <>
-        {!this.state.isEditing && (
-          <div className="button-row">
-            <div className="button">
-              <Button size="small" variant="contained" color="primary" onClick={this.enableEditing}>
-                Edit type
-              </Button>
-            </div>
-            <div className="button">
-              <Button
-                size="small"
-                variant="contained"
-                onClick={() => onDeleteType(selectedType.id)}
-              >
-                Delete type
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {this.state.isEditing ? (
-          <>
-            <div className="type-edit-wrapper">
-              <Input
-                value={selectedType.name}
-                onChange={e =>
-                  this.setState({
-                    selectedType: { ...this.state.selectedType, name: e.currentTarget.value },
-                  })
-                }
-              />
-            </div>
-            <div className="type-edit-wrapper">
-              {' '}
-              <Input
-                value={selectedType.description}
-                onChange={e =>
-                  this.setState({
-                    selectedType: {
-                      ...this.state.selectedType,
-                      description: e.currentTarget.value,
-                    },
-                  })
-                }
-              />
-            </div>
-          </>
-        ) : (
-          <Description className="-doc-type" text={selectedType.description} />
-        )}
-        {renderTypesDef(selectedType, selectedEdgeID)}
-        {renderFields(
-          selectedType,
-          selectedEdgeID,
-          this.state.isEditing,
-          scalars,
-          this.enableEditing,
-          onDeleteEdge,
-        )}
-        {this.state.isEditing && (
-          <div className="button-row">
-            <div className="button">
-              <Button
-                variant="contained"
-                size="small"
-                onClick={() => {
-                  onEditType(this.props.selectedType.id, selectedType);
-                  this.setState({ isEditing: false, selectedType: null });
-                }}
-                color="primary"
-                startIcon={<SaveIcon />}
-              >
-                Save
-              </Button>
-            </div>
-            <div className="button">
-              <Button
-                color="primary"
-                size="small"
-                onClick={() => this.setState({ isEditing: false })}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        )}
-      </>
+  const moveItem = (dragIdx: number, hoverIdx: number) => {
+    const typeCopy = _.cloneDeep(selectedType);
+    const drag: any = Object.values(typeCopy.fields).find(
+      (f: any) => f.originalPosition === dragIdx,
+    );
+    const hover: any = Object.values(typeCopy.fields).find(
+      (f: any) => f.originalPosition === hoverIdx,
     );
 
-    function renderTypesDef(type: SimplifiedTypeWithIDs, selectedId) {
-      let typesTitle;
-      let types: {
-        id: string;
-        type: SimplifiedTypeWithIDs;
-      }[];
+    const tmp = typeCopy.fields[drag.name].originalPosition;
+    typeCopy.fields[drag.name].originalPosition = typeCopy.fields[hover.name].originalPosition;
+    typeCopy.fields[hover.name].originalPosition = tmp;
+    setSelectedType(typeCopy);
+  };
 
-      switch (type.kind) {
-        case 'UNION':
-          typesTitle = 'possible types';
-          types = type.possibleTypes;
-          break;
-        case 'INTERFACE':
-          typesTitle = 'implementations';
-          types = type.derivedTypes;
-          break;
-        case 'OBJECT':
-          typesTitle = 'implements';
-          types = type.interfaces;
-          break;
-        default:
-          return null;
-      }
+  const onDeleteEdge = fieldId => {
+    const typeCopy = _.cloneDeep(selectedType);
+    delete typeCopy.fields[fieldId];
+    setSelectedType(typeCopy);
+  };
 
-      types = types.filter(({ type }) => typeGraph.nodes[type.id] && isMatch(type.name, filter));
+  const renderTypesDef = () => {
+    let typesTitle;
+    let types: {
+      id: string;
+      type: SimplifiedTypeWithIDs;
+    }[];
 
-      if (types.length === 0) return null;
-
-      return (
-        <div className="doc-category">
-          <div className="title">{typesTitle}</div>
-          {_.map(types, type => {
-            let props: any = {
-              key: type.id,
-              className: classNames('item', {
-                '-selected': type.id === selectedId,
-              }),
-              onClick: () => onSelectEdge(type.id),
-            };
-            if (type.id === selectedId) props.ref = 'selectedItem';
-            return (
-              <div {...props}>
-                <TypeLink type={type.type} onClick={onTypeLink} filter={filter} />
-                <Description text={type.type.description} className="-linked-type" />
-              </div>
-            );
-          })}
-        </div>
-      );
+    switch (usedSelectedType.kind) {
+      case 'UNION':
+        typesTitle = 'possible types';
+        types = usedSelectedType.possibleTypes;
+        break;
+      case 'INTERFACE':
+        typesTitle = 'implementations';
+        types = usedSelectedType.derivedTypes;
+        break;
+      case 'OBJECT':
+        typesTitle = 'implements';
+        types = usedSelectedType.interfaces;
+        break;
+      default:
+        return null;
     }
 
-    function renderFields(
-      type: SimplifiedTypeWithIDs,
-      selectedId: string,
-      isEditing: boolean,
-      scalars: string[],
-      enableEditing: Function,
-      onDeleteEdge: Function,
-    ) {
-      let fields: any = Object.values(type.fields);
-      fields = fields.filter(field => {
-        const args: any = Object.values(field.args);
-        const matchingArgs = args.filter(arg => isMatch(arg.name, filter));
+    types = types.filter(({ type }) => typeGraph.nodes[type.id] && isMatch(type.name, filter));
 
-        return isMatch(field.name, filter) || matchingArgs.length > 0;
-      });
+    if (types.length === 0) return null;
 
-      if (fields.length === 0) return null;
-      return (
-        <div className="doc-category">
-          <div className="title">fields</div>
-          <AddNewButton
-            selectedType={selectedType}
-            onEditEdge={onEditEdge}
-            scalars={scalars}
-            enableEditing={enableEditing}
-          />
-          {fields.map(field => {
-            const props: any = {
-              key: field.name,
-              className: classNames('item', {
-                '-selected': field.id === selectedId,
-                '-with-args': !_.isEmpty(field.args),
-              }),
-              onClick: () => onSelectEdge(field.id),
-            };
-            if (field.id === selectedId) props.ref = 'selectedItem';
-
-            return (
-              <ListItem
-                {...props}
-                key={field.originalName || field.name}
-                filter={filter}
-                selectedId={selectedId}
-                onTypeLink={onTypeLink}
-                selectedType={selectedType}
-                onEditEdge={onEditEdge}
-                field={field}
-                scalars={scalars}
-                isEditing={isEditing}
-                enableEditing={enableEditing}
-                onDeleteEdge={onDeleteEdge}
-              />
-            );
-          })}
-        </div>
-      );
-    }
-  }
-}
-
-const ListItem = ({
-  filter,
-  selectedId,
-  onTypeLink,
-  onEditEdge,
-  field,
-  key,
-  className,
-  scalars,
-  isEditing,
-  enableEditing,
-  onDeleteEdge,
-}: any) => {
-  return (
-    <div key={key} className={className}>
-      {!isEditing && <a className="field-name">{highlightTerm(field.name, filter)}</a>}
-      {isEditing && (
-        <Input
-          value={field.name}
-          onChange={e => {
-            onEditEdge(
-              field.originalName,
-              e.currentTarget.value,
-              field.description,
-              field.type.name,
-            );
-          }}
-        />
-      )}
-      <span
-        className={classNames('args-wrap', {
-          '-empty': _.isEmpty(field.args),
+    return (
+      <div className="doc-category">
+        <div className="title">{typesTitle}</div>
+        {_.map(types, type => {
+          let props: any = {
+            key: type.id,
+            className: classNames('item', {
+              '-selected': type.id === selectedEdgeID,
+            }),
+            onClick: () => onSelectEdge(type.id),
+          };
+          if (type.id === selectedEdgeID) props.ref = selectedItemRef;
+          return (
+            <div {...props}>
+              <TypeLink type={type.type} onClick={onTypeLink} filter={filter} />
+              <Description text={type.type.description} className="-linked-type" />
+            </div>
+          );
         })}
-      >
-        {!_.isEmpty(field.args) && (
-          <span key="args" className="args">
-            {_.map(field.args, arg => (
-              <Argument
-                key={arg.name}
-                arg={arg}
-                expanded={field.id === selectedId}
-                onTypeLink={onTypeLink}
-              />
-            ))}
-          </span>
-        )}
-      </span>
-      {!isEditing && <WrappedTypeName container={field} onTypeLink={onTypeLink} />}
-      {isEditing && (
-        <Select
-          value={field.type.name}
-          onChange={e => {
-            onEditEdge(field.originalName, field.name, field.description, e.target.value);
-          }}
-        >
-          {scalars.map(s => (
-            <MenuItem value={s} key={s}>
-              {s}
-            </MenuItem>
-          ))}
-        </Select>
-      )}
-      {field.isDeprecated && <span className="doc-alert-text"> DEPRECATED</span>}
-      {isEditing ? (
-        <Input
-          value={field.description}
-          onChange={e =>
-            onEditEdge(field.originalName, field.name, e.currentTarget.value, field.type.name)
-          }
+      </div>
+    );
+  };
+
+  const renderFields = () => {
+    let fields: any = Object.values(usedSelectedType.fields);
+    fields.sort((a: any, b: any) => a.originalPosition - b.originalPosition);
+    fields = fields.filter(field => {
+      const args: any = Object.values(field.args);
+      const matchingArgs = args.filter(arg => isMatch(arg.name, filter));
+
+      return isMatch(field.name, filter) || matchingArgs.length > 0;
+    });
+    if (fields.length === 0) return null;
+    return (
+      <div className="doc-category">
+        <div className="title">fields</div>
+        <AddNewButton
+          selectedType={selectedType}
+          onEditEdge={onEditEdge}
+          scalars={scalars}
+          enableEditing={enableEditing}
         />
-      ) : (
-        <Markdown text={field.description} className="description-box -field" />
+        {fields.map(field => {
+          const props: any = {
+            key: field.name,
+            className: classNames('item', {
+              '-selected': field.id === selectedEdgeID,
+              '-with-args': !_.isEmpty(field.args),
+            }),
+            onClick: () => onSelectEdge(field.id),
+          };
+          if (field.id === selectedEdgeID) props.ref = selectedItemRef;
+
+          const ListItemComponent = isEditing ? DraggableListItem : ListItem;
+          return (
+            <ListItemComponent
+              {...props}
+              key={field.originalName || field.name}
+              filter={filter}
+              selectedId={selectedEdgeID}
+              onTypeLink={onTypeLink}
+              selectedType={selectedType}
+              onEditEdge={onEditEdge}
+              field={field}
+              scalars={scalars}
+              isEditing={isEditing}
+              enableEditing={enableEditing}
+              onDeleteEdge={onDeleteEdge}
+              moveItem={moveItem}
+            />
+          );
+        })}
+      </div>
+    );
+  };
+
+  return (
+    <>
+      {!isEditing && (
+        <div className="button-row">
+          <div className="button">
+            <Button size="small" variant="contained" color="primary" onClick={enableEditing}>
+              Edit type
+            </Button>
+          </div>
+          <div className="button">
+            <Button
+              size="small"
+              variant="contained"
+              onClick={() => onDeleteType(usedSelectedType.id)}
+            >
+              Delete type
+            </Button>
+          </div>
+        </div>
       )}
 
-      <IconButton style={{ position: 'absolute', top: '10px', right: '10px' }}>
-        <DeleteIcon
+      {isEditing ? (
+        <>
+          <div className="type-edit-wrapper">
+            <Input
+              value={usedSelectedType.name}
+              onChange={e => setSelectedType({ ...selectedType, name: e.currentTarget.value })}
+            />
+          </div>
+          <div className="type-edit-wrapper">
+            <Input
+              value={usedSelectedType.description}
+              onChange={e =>
+                setSelectedType({ ...selectedType, description: e.currentTarget.value })
+              }
+            />
+          </div>
+        </>
+      ) : (
+        <Description className="-doc-type" text={usedSelectedType.description} />
+      )}
+      {renderTypesDef()}
+
+      <DndProvider backend={Backend}>{renderFields()}</DndProvider>
+      {isEditing && (
+        <EditButtons
+          selectedTypeId={props.selectedType.id}
+          selectedType={usedSelectedType}
+          setIsEditing={setIsEditing}
+          setSelectedType={setSelectedType}
+          onEditType={onEditType}
+        />
+      )}
+    </>
+  );
+};
+
+export default TypeDoc;
+
+const EditButtons = ({
+  selectedTypeId,
+  selectedType,
+  setIsEditing,
+  setSelectedType,
+  onEditType,
+}: any) => (
+  <div className="button-row">
+    <div className="button">
+      <Button
+        variant="contained"
+        size="small"
+        onClick={() => {
+          onEditType(selectedTypeId, selectedType);
+          setIsEditing(false);
+          setSelectedType(null);
+        }}
+        color="primary"
+        startIcon={<SaveIcon />}
+      >
+        Save
+      </Button>
+    </div>
+    <div className="button">
+      <Button color="primary" size="small" onClick={() => setIsEditing(false)}>
+        Cancel
+      </Button>
+    </div>
+  </div>
+);
+
+const ListItem = React.forwardRef<HTMLDivElement, any>(
+  (
+    {
+      filter,
+      selectedId,
+      onTypeLink,
+      onEditEdge,
+      field,
+      key,
+      className,
+      scalars,
+      isEditing,
+      enableEditing,
+      onDeleteEdge,
+      ...props
+    }: any,
+    ref,
+  ) => {
+    const elementRef = React.useRef(null);
+    if (props.connectDragSource) {
+      props.connectDragSource(elementRef);
+      props.connectDropTarget(elementRef);
+    }
+    React.useImperativeHandle<{}, any>(ref, () => ({
+      getNode: () => elementRef.current,
+    }));
+    const opacity = props.isDragging ? 0 : 1;
+    return (
+      <div key={key} className={className} ref={elementRef} style={{ opacity }}>
+        <a className="field-name">{highlightTerm(field.name, filter)}</a>
+
+        <span
+          className={classNames('args-wrap', {
+            '-empty': _.isEmpty(field.args),
+          })}
+        >
+          {!_.isEmpty(field.args) && (
+            <span key="args" className="args">
+              {_.map(field.args, arg => (
+                <Argument
+                  key={arg.name}
+                  arg={arg}
+                  expanded={field.id === selectedId}
+                  onTypeLink={onTypeLink}
+                />
+              ))}
+            </span>
+          )}
+        </span>
+        <WrappedTypeName container={field} onTypeLink={onTypeLink} />
+        {field.isDeprecated && <span className="doc-alert-text"> DEPRECATED</span>}
+        <Markdown text={field.description} className="description-box -field" />
+        <IconButton
+          style={{ position: 'absolute', top: '10px', right: '10px' }}
           onClick={() => {
             enableEditing();
             setTimeout(() => {
@@ -390,11 +374,98 @@ const ListItem = ({
               onDeleteEdge(field.name);
             });
           }}
-        />
-      </IconButton>
-    </div>
-  );
-};
+        >
+          <DeleteIcon />
+        </IconButton>
+      </div>
+    );
+  },
+);
+
+const ListItemEdit = React.forwardRef<HTMLDivElement, any>(
+  (
+    {
+      filter,
+      selectedId,
+      onTypeLink,
+      onEditEdge,
+      field,
+      key,
+      className,
+      scalars,
+      enableEditing,
+      onDeleteEdge,
+      ...props
+    }: any,
+    ref,
+  ) => {
+    const elementRef = React.useRef(null);
+    if (props.connectDragSource) {
+      props.connectDragSource(elementRef);
+      props.connectDropTarget(elementRef);
+    }
+    React.useImperativeHandle<{}, any>(ref, () => ({
+      getNode: () => elementRef.current,
+    }));
+    const opacity = props.isDragging ? 0 : 1;
+
+    const onEditName = (name: string) =>
+      onEditEdge(field.originalName, name, field.description, field.type.name);
+    const onEditDescription = (description: string) =>
+      onEditEdge(field.originalName, field.name, description, field.type.name);
+    const onEditType = (type: string) =>
+      onEditEdge(field.originalName, field.name, field.description, type);
+    return (
+      <div key={key} className={className} ref={elementRef} style={{ opacity, display: 'flex' }}>
+        <div className="edit-field-icon-column">
+          <span title="Drag to reorder fields">
+            <DragIndicatorIcon />
+          </span>
+        </div>
+        <div>
+          <Input
+            value={field.name}
+            onChange={e => onEditName(e.currentTarget.value)}
+            placeholder="Field name"
+            required
+            style={{ width: '60%' }}
+          />
+          <Select
+            value={field.type.name}
+            required
+            onChange={e => onEditType(e.target.value as string)}
+            style={{ width: '35%', marginLeft: '5px' }}
+          >
+            {scalars.map(s => (
+              <MenuItem value={s} key={s}>
+                {s}
+              </MenuItem>
+            ))}
+          </Select>
+          <Input
+            value={field.description}
+            onChange={e => onEditDescription(e.currentTarget.value)}
+            style={{ width: '100%' }}
+            placeholder="Description"
+          />
+        </div>
+        <div className="edit-field-icon-column">
+          <IconButton
+            onClick={() => {
+              enableEditing();
+              setTimeout(() => {
+                //do this after state has been updated in enableEditing
+                onDeleteEdge(field.name);
+              });
+            }}
+          >
+            <DeleteIcon />
+          </IconButton>
+        </div>
+      </div>
+    );
+  },
+);
 
 let counter = 1;
 
@@ -419,4 +490,77 @@ const AddNewButton = ({ onEditEdge, scalars, enableEditing }: any) => (
       Add field
     </Button>
   </div>
+);
+
+const Item = 'item';
+const DraggableListItem = DropTarget(
+  Item,
+  {
+    hover(props: any, monitor: any, component: any) {
+      if (!component) {
+        return null;
+      }
+      // node = HTML Div element from imperative API
+      const node = component.getNode();
+      if (!node) {
+        return null;
+      }
+      const dragIndex = monitor.getItem().index;
+      const hoverIndex = props.field.originalPosition;
+
+      // Don't replace items with themselves
+      if (dragIndex === hoverIndex) {
+        return;
+      }
+      // Determine rectangle on screen
+      const hoverBoundingRect = node.getBoundingClientRect();
+
+      // Get vertical middle
+      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+
+      // Determine mouse position
+      const clientOffset = monitor.getClientOffset();
+
+      // Get pixels to the top
+      const hoverClientY = (clientOffset as XYCoord).y - hoverBoundingRect.top;
+
+      // Only perform the move when the mouse has crossed half of the items height
+      // When dragging downwards, only move when the cursor is below 50%
+      // When dragging upwards, only move when the cursor is above 50%
+
+      // Dragging downwards
+      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) {
+        return;
+      }
+      // Dragging upwards
+      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) {
+        return;
+      }
+      // Time to actually perform the action
+      props.moveItem(dragIndex, hoverIndex);
+
+      // Note: we're mutating the monitor item here!
+      // Generally it's better to avoid mutations,
+      // but it's good here for the sake of performance
+      // to avoid expensive index searches.
+      monitor.getItem().index = hoverIndex;
+    },
+  },
+  (connect: DropTargetConnector) => ({
+    connectDropTarget: connect.dropTarget(),
+  }),
+)(
+  DragSource(
+    Item,
+    {
+      beginDrag: (props: any) => ({
+        id: props.field.id,
+        index: props.field.originalPosition,
+      }),
+    },
+    (connect: DragSourceConnector, monitor: DragSourceMonitor) => ({
+      connectDragSource: connect.dragSource(),
+      isDragging: monitor.isDragging(),
+    }),
+  )(ListItemEdit),
 );

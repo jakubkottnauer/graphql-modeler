@@ -15,6 +15,12 @@
   display: inline-block;
 }
 
+.edit-field-icon-column {
+  width: 30px;
+  align-items: center;
+  display: flex;
+}
+
 .type-edit-wrapper {
   padding: 0 calc(var(--spacing-unit) * 3);
 }

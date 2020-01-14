@@ -385,7 +385,11 @@ export default class Voyager extends React.Component<VoyagerProps> {
           data.data.__schema.types[typeIndex].fields.push(field);
         }
       }
-
+      // sort fields based on the new order set when editing
+      data.data.__schema.types[typeIndex].fields.sort(
+        (a, b) =>
+          typeData.fields[a.name].originalPosition - typeData.fields[b.name].originalPosition,
+      );
       // traverse the graph and change the type's name everywhere
       replaceTypeWith(data, typeName, typeData.name);
       // update description
