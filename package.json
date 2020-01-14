@@ -1,6 +1,6 @@
 {
   "name": "graphql-modeler",
-  "version": "1.0.0-rc.3",
+  "version": "1.0.0-rc.4",
   "description": "GraphQL introspection viewer and modeler",
   "main": "dist/voyager.lib.js",
   "types": "typings/index.d.ts",
@@ -78,6 +78,8 @@
     "commonmark": "^0.29.1",
     "lodash": "^4.17.10",
     "prop-types": "^15.7.2",
+    "react-dnd": "^10.0.2",
+    "react-dnd-html5-backend": "^10.0.2",
     "svg-pan-zoom": "^3.6.1",
     "viz.js": "2.1.2"
   },
