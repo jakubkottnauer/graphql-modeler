@@ -32,6 +32,8 @@ export interface VoyagerDisplayOptions {
   showLeafFields?: boolean;
   sortByAlphabet?: boolean;
   hideRoot?: boolean;
+  /* Used when creating an empty schema. */
+  defaultSchema?: string;
 }
 
 const defaultDisplayOptions = {
@@ -54,7 +56,7 @@ export interface VoyagerProps {
   hideSettings?: boolean;
   workerURI?: string;
   loadWorker?: WorkerCallback;
-
+  defaultSchema?: string;
   children?: React.ReactNode;
 }
 
@@ -216,6 +218,7 @@ export default class Voyager extends React.Component<VoyagerProps> {
         <div className="contents">
           {panelHeader}
           <DocExplorer
+            defaultSchema={this.props.defaultSchema}
             typeGraph={typeGraph}
             selectedTypeID={selectedTypeID}
             selectedEdgeID={selectedEdgeID}
@@ -381,14 +384,18 @@ export default class Voyager extends React.Component<VoyagerProps> {
           const field = _.cloneDeep(data.data.__schema.types[typeIndex].fields[0]);
           field.name = newField.name;
           field.description = newField.description;
-          field.type.ofType.name = newField.type.name;
+          if (field.type?.ofType?.name) {
+            field.type.ofType.name = newField.type.name;
+          } else {
+            field.type.name = newField.type.name;
+          }
           data.data.__schema.types[typeIndex].fields.push(field);
         }
       }
       // sort fields based on the new order set when editing
       data.data.__schema.types[typeIndex].fields.sort(
         (a, b) =>
-          typeData.fields[a.name].originalPosition - typeData.fields[b.name].originalPosition,
+          typeData.fields[a.name]?.originalPosition - typeData.fields[b.name]?.originalPosition,
       );
       // traverse the graph and change the type's name everywhere
       replaceTypeWith(data, typeName, typeData.name);

@@ -21,6 +21,7 @@ import SaveIcon from '@material-ui/icons/Save';
 
 interface DocExplorerProps {
   typeGraph: any;
+  defaultSchema?: string;
   selectedTypeID: string;
   selectedEdgeID: string;
 
@@ -85,7 +86,7 @@ export default class DocExplorer extends React.Component<DocExplorerProps> {
   }
 
   render() {
-    const { updateSchema, typeGraph } = this.props;
+    const { defaultSchema, updateSchema, typeGraph } = this.props;
 
     if (!typeGraph) {
       return (
@@ -102,7 +103,7 @@ export default class DocExplorer extends React.Component<DocExplorerProps> {
     const name = currentNav.type ? currentNav.type.name : 'Schema';
     return (
       <div className="type-doc" key={navStack.length}>
-        <NewModelButton updateSchema={updateSchema} />
+        <NewModelButton defaultSchema={defaultSchema} updateSchema={updateSchema} />
         <ImportExportButton updateSchema={updateSchema} />
         <RevertChanges updateSchema={updateSchema} />
         {this.renderNavigation(previousNav, currentNav)}
@@ -229,7 +230,13 @@ export default class DocExplorer extends React.Component<DocExplorerProps> {
   };
 }
 
-const NewModelButton = ({ updateSchema }: { updateSchema: (schema: string | null) => void }) => {
+const NewModelButton = ({
+  updateSchema,
+  defaultSchema,
+}: {
+  defaultSchema?: string;
+  updateSchema: (schema: string | null) => void;
+}) => {
   const emptyModel = `
   schema {
     query: root
@@ -239,7 +246,7 @@ const NewModelButton = ({ updateSchema }: { updateSchema: (schema: string | null
     value: String
   }
   `;
-  return <Button onClick={() => updateSchema(emptyModel)}>New model</Button>;
+  return <Button onClick={() => updateSchema(defaultSchema || emptyModel)}>New model</Button>;
 };
 
 const RevertChanges = ({ updateSchema }: { updateSchema: (schema: string | null) => void }) => {

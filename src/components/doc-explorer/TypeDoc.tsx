@@ -58,13 +58,14 @@ const TypeDoc = ({
   const [isEditing, setIsEditing] = React.useState(false);
   const [selectedType, setSelectedType] = React.useState<any | null>(null);
   const selectedItemRef = React.useRef<HTMLElement>();
+  const usedSelectedType = isEditing ? selectedType : props.selectedType;
 
   const enableEditing = () => {
     if (isEditing) {
       return;
     }
 
-    const type = _.cloneDeep(props.selectedType);
+    const type = _.cloneDeep(usedSelectedType);
 
     type.fields = Object.values(type.fields).reduce(
       (acc: any, f: any, idx) => ({
@@ -76,15 +77,15 @@ const TypeDoc = ({
 
     setIsEditing(true);
     setSelectedType(type);
+    return type;
   };
 
   React.useEffect(() => {
     selectedItemRef.current?.scrollIntoViewIfNeeded();
   }, [selectedItemRef.current]);
 
-  const usedSelectedType = isEditing ? selectedType : props.selectedType;
   const onEditEdge = (fieldId, newFieldId, newDescription, newDataType) => {
-    const typeCopy = _.cloneDeep(selectedType);
+    const typeCopy = isEditing ? _.cloneDeep(usedSelectedType) : enableEditing();
     if (!typeCopy.fields[fieldId]) {
       typeCopy.fields[fieldId] = _.cloneDeep(typeCopy.fields[Object.keys(typeCopy.fields)[0]]);
       typeCopy.fields[fieldId].originalName = fieldId;
@@ -94,7 +95,6 @@ const TypeDoc = ({
     typeCopy.fields[fieldId].description = newDescription;
     typeCopy.fields[fieldId].type = { ...typeCopy.fields[fieldId].type };
     typeCopy.fields[fieldId].type.name = newDataType;
-
     setSelectedType(typeCopy);
   };
 
@@ -114,7 +114,7 @@ const TypeDoc = ({
   };
 
   const onDeleteEdge = fieldId => {
-    const typeCopy = _.cloneDeep(selectedType);
+    const typeCopy = isEditing ? _.cloneDeep(usedSelectedType) : enableEditing();
     delete typeCopy.fields[fieldId];
     setSelectedType(typeCopy);
   };
@@ -176,19 +176,13 @@ const TypeDoc = ({
     fields = fields.filter(field => {
       const args: any = Object.values(field.args);
       const matchingArgs = args.filter(arg => isMatch(arg.name, filter));
-
       return isMatch(field.name, filter) || matchingArgs.length > 0;
     });
     if (fields.length === 0) return null;
     return (
       <div className="doc-category">
         <div className="title">fields</div>
-        <AddNewButton
-          selectedType={selectedType}
-          onEditEdge={onEditEdge}
-          scalars={scalars}
-          enableEditing={enableEditing}
-        />
+        <AddNewButton selectedType={selectedType} onEditEdge={onEditEdge} scalars={scalars} />
         {fields.map(field => {
           const props: any = {
             key: field.name,
@@ -367,13 +361,7 @@ const ListItem = React.forwardRef<HTMLDivElement, any>(
         <Markdown text={field.description} className="description-box -field" />
         <IconButton
           style={{ position: 'absolute', top: '10px', right: '10px' }}
-          onClick={() => {
-            enableEditing();
-            setTimeout(() => {
-              //do this after state has been updated in enableEditing
-              onDeleteEdge(field.name);
-            });
-          }}
+          onClick={() => onDeleteEdge(field.name)}
         >
           <DeleteIcon />
         </IconButton>
@@ -469,7 +457,7 @@ const ListItemEdit = React.forwardRef<HTMLDivElement, any>(
 
 let counter = 1;
 
-const AddNewButton = ({ onEditEdge, scalars, enableEditing }: any) => (
+const AddNewButton = ({ onEditEdge, scalars }: any) => (
   <div className="button">
     <Button
       startIcon={<AddIcon />}
@@ -479,12 +467,8 @@ const AddNewButton = ({ onEditEdge, scalars, enableEditing }: any) => (
       size="small"
       variant="contained"
       onClick={() => {
-        enableEditing();
-        setTimeout(() => {
-          //do this after state has been updated in enableEditing
-          const id = 'test' + counter++;
-          onEditEdge(id, id, id + ' description', scalars[0]);
-        });
+        const id = 'test' + counter++;
+        onEditEdge(id, id, id + ' description', scalars[0]);
       }}
     >
       Add field
