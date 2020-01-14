@@ -2,6 +2,7 @@ import * as _ from 'lodash';
 import * as React from 'react';
 import * as classNames from 'classnames';
 import Button from '@material-ui/core/Button';
+import AddIcon from '@material-ui/icons/Add';
 import { isMatch } from '../../utils';
 
 import './TypeList.css';
@@ -21,7 +22,7 @@ interface TypeListProps {
 const createNewType = (id: string) => ({
   kind: 'OBJECT',
   name: id,
-  description: 'test',
+  description: 'My new type',
   fields: [
     {
       name: 'id',
@@ -30,14 +31,14 @@ const createNewType = (id: string) => ({
       type: {
         kind: 'NON_NULL',
         name: null,
-        ofType: { kind: 'SCALAR', name: 'ID', ofType: null },
+        ofType: { kind: 'SCALAR', name: 'String', ofType: null },
       },
       isDeprecated: false,
       deprecationReason: null,
     },
   ],
   inputFields: null,
-  interfaces: [{ kind: 'INTERFACE', name: 'Node', ofType: null }],
+  interfaces: [],
   enumValues: null,
   possibleTypes: null,
 });
@@ -58,13 +59,19 @@ export default class TypeList extends React.Component<TypeListProps> {
 
     return (
       <div className="doc-explorer-type-list">
-        <Button
-          onClick={() => this.props.onEditType('Test', createNewType('NewType' + counter++))}
-          variant="contained"
-          color="primary"
-        >
-          Add new type
-        </Button>
+        <div className="button">
+          <Button
+            onClick={() => this.props.onEditType('Test', createNewType('NewType' + counter++))}
+            variant="contained"
+            startIcon={<AddIcon />}
+            size="small"
+            style={{
+              marginBottom: '10px',
+            }}
+          >
+            Add type
+          </Button>
+        </div>
         {rootType && renderItem(rootType, '-root')}
         {_.map(types, type => renderItem(type, ''))}
       </div>

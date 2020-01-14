@@ -9,6 +9,15 @@ import OtherSearchResults from './OtherSearchResults';
 import SearchBox from '../utils/SearchBox';
 
 import './DocExplorer.css';
+import {
+  Button,
+  Dialog,
+  DialogTitle,
+  TextareaAutosize,
+  DialogContent,
+  DialogActions,
+} from '@material-ui/core';
+import SaveIcon from '@material-ui/icons/Save';
 
 interface DocExplorerProps {
   typeGraph: any;
@@ -29,6 +38,7 @@ interface DocExplorerProps {
   onEditType: (typeId: string, typeData: any) => void;
   onDeleteType: (typeId) => void;
   scalars: string[];
+  updateSchema: (schema: string | null) => void;
 }
 
 const initialNav = { title: 'Type List', type: null, searchValue: null };
@@ -75,7 +85,7 @@ export default class DocExplorer extends React.Component<DocExplorerProps> {
   }
 
   render() {
-    const { typeGraph } = this.props;
+    const { updateSchema, typeGraph } = this.props;
 
     if (!typeGraph) {
       return (
@@ -92,6 +102,9 @@ export default class DocExplorer extends React.Component<DocExplorerProps> {
     const name = currentNav.type ? currentNav.type.name : 'Schema';
     return (
       <div className="type-doc" key={navStack.length}>
+        <NewModelButton updateSchema={updateSchema} />
+        <ImportExportButton updateSchema={updateSchema} />
+        <RevertChanges updateSchema={updateSchema} />
         {this.renderNavigation(previousNav, currentNav)}
         <div className="scroll-area">
           <SearchBox
@@ -215,3 +228,113 @@ export default class DocExplorer extends React.Component<DocExplorerProps> {
     onSelectNode(newCurrentNode.type.id);
   };
 }
+
+const NewModelButton = ({ updateSchema }: { updateSchema: (schema: string | null) => void }) => {
+  const emptyModel = `
+  schema {
+    query: root
+  }
+
+  type root {
+    value: String
+  }
+  `;
+  return <Button onClick={() => updateSchema(emptyModel)}>New model</Button>;
+};
+
+const RevertChanges = ({ updateSchema }: { updateSchema: (schema: string | null) => void }) => {
+  return <Button onClick={() => updateSchema(null)}>Revert my changes</Button>;
+};
+
+const ImportExportDialog = ({
+  updateSchema,
+  dialogShown,
+  setDialogShown,
+}: {
+  updateSchema: (schema: string) => void;
+  dialogShown: boolean;
+  setDialogShown: (shown: boolean) => void;
+}) => {
+  const [schema, setSchema] = React.useState('');
+
+  React.useEffect(() => {
+    const persistedSchema = localStorage.getItem('schema');
+    if (persistedSchema) {
+      setSchema(persistedSchema);
+    }
+  }, []);
+
+  return (
+    <Dialog open={dialogShown} onClose={() => setDialogShown(false)} maxWidth="lg" fullWidth>
+      <DialogTitle>Import / export model</DialogTitle>
+      <DialogContent>
+        <TextareaAutosize
+          value={schema}
+          rowsMax={50}
+          style={{ width: '99%' }}
+          onChange={e => {
+            setSchema(e.currentTarget.value);
+          }}
+        />
+      </DialogContent>
+      <DialogActions>
+        <Button
+          onClick={() => {
+            const originalContent = document.getElementsByClassName('viewport')[0].childNodes[0];
+            const content = originalContent.cloneNode(true);
+            // remove pan/zoom controls
+            content.removeChild(content.childNodes[2]);
+            const a = document.createElement('a');
+            // @ts-ignore
+            a.href = 'data:image/svg+xml;utf8,' + escape(content.outerHTML);
+            a.download = 'model.svg';
+            a.target = '_blank';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          }}
+          color="primary"
+        >
+          Export as SVG
+        </Button>
+        <div style={{ flex: '1 0 0' }} />
+        <Button onClick={() => setDialogShown(false)} color="primary">
+          Cancel
+        </Button>
+        <Button
+          variant="contained"
+          color="primary"
+          size="small"
+          startIcon={<SaveIcon />}
+          onClick={() => {
+            updateSchema(schema);
+            setDialogShown(false);
+          }}
+        >
+          Save
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+const ImportExportButton = ({
+  updateSchema,
+}: {
+  updateSchema: (schema: string | null) => void;
+}) => {
+  const [dialogShown, setDialogShown] = React.useState(false);
+
+  return (
+    <>
+      <Button onClick={() => setDialogShown(true)}>Import / export model</Button>
+      {dialogShown && (
+        <ImportExportDialog
+          updateSchema={updateSchema}
+          dialogShown={dialogShown}
+          setDialogShown={setDialogShown}
+        />
+      )}
+    </>
+  );
+};

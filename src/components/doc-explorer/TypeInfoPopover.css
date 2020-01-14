@@ -1,13 +1,13 @@
 @import '../variables.css';
 
-.type-doc  > .type-info-popover {
+.type-doc > .type-info-popover {
   z-index: 0;
   position: absolute;
 }
 
 .type-info-popover {
   left: var(--doc-panel-width);
-  top: calc(var(--icons-size) + (var(--spacing-unit) * 2) + 1px);
+  top: calc(var(--icons-size) + (var(--spacing-unit) * 2) + 80px);
   bottom: 75px;
   overflow-y: auto;
 
@@ -27,6 +27,6 @@
   }
   & > button {
     position: absolute;
-    right: calc(var(--spacing-unit) * 2)
+    right: calc(var(--spacing-unit) * 2);
   }
 }

@@ -6,6 +6,7 @@ demo-dist
 .vscode
 
 stats.json
+yarn-error.log
 npm-debug.log
 
 /lib

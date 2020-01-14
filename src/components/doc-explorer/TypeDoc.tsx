@@ -2,9 +2,13 @@ import * as _ from 'lodash';
 import * as React from 'react';
 import * as classNames from 'classnames';
 import Button from '@material-ui/core/Button';
+import IconButton from '@material-ui/core/IconButton';
 import Select from '@material-ui/core/Select';
 import Input from '@material-ui/core/Input';
 import MenuItem from '@material-ui/core/MenuItem';
+import DeleteIcon from '@material-ui/icons/Delete';
+import AddIcon from '@material-ui/icons/Add';
+import SaveIcon from '@material-ui/icons/Save';
 
 import './TypeDoc.css';
 
@@ -25,13 +29,6 @@ interface TypeDocProps {
   onSelectEdge: (string) => void;
   onTypeLink: (any) => void;
   onDeleteType: (typeId) => void;
-  // onEditEdge: (
-  //   typeId: string,
-  //   edgeId: string,
-  //   newEdgeId: string,
-  //   newDescription: string,
-  //   newDataType: string,
-  // ) => void;
   onEditType: (typeId: string, typeData: any) => void;
   scalars: string[];
 }
@@ -105,7 +102,6 @@ export default class TypeDoc extends React.Component<TypeDocProps> {
 
     const onDeleteEdge = fieldId => {
       const typeCopy = _.cloneDeep(this.state.selectedType);
-      console.log(typeCopy, typeCopy.fields, fieldId);
       delete typeCopy.fields[fieldId];
       this.setState({ selectedType: typeCopy });
     };
@@ -113,31 +109,50 @@ export default class TypeDoc extends React.Component<TypeDocProps> {
     return (
       <>
         {!this.state.isEditing && (
-          <Button variant="contained" color="primary" onClick={this.enableEditing}>
-            Edit
-          </Button>
+          <div className="button-row">
+            <div className="button">
+              <Button size="small" variant="contained" color="primary" onClick={this.enableEditing}>
+                Edit type
+              </Button>
+            </div>
+            <div className="button">
+              <Button
+                size="small"
+                variant="contained"
+                onClick={() => onDeleteType(selectedType.id)}
+              >
+                Delete type
+              </Button>
+            </div>
+          </div>
         )}
-        <Button variant="contained" color="secondary" onClick={() => onDeleteType(selectedType.id)}>
-          Delete type
-        </Button>
+
         {this.state.isEditing ? (
           <>
-            <Input
-              value={selectedType.name}
-              onChange={e =>
-                this.setState({
-                  selectedType: { ...this.state.selectedType, name: e.currentTarget.value },
-                })
-              }
-            />
-            <Input
-              value={selectedType.description}
-              onChange={e =>
-                this.setState({
-                  selectedType: { ...this.state.selectedType, description: e.currentTarget.value },
-                })
-              }
-            />
+            <div className="type-edit-wrapper">
+              <Input
+                value={selectedType.name}
+                onChange={e =>
+                  this.setState({
+                    selectedType: { ...this.state.selectedType, name: e.currentTarget.value },
+                  })
+                }
+              />
+            </div>
+            <div className="type-edit-wrapper">
+              {' '}
+              <Input
+                value={selectedType.description}
+                onChange={e =>
+                  this.setState({
+                    selectedType: {
+                      ...this.state.selectedType,
+                      description: e.currentTarget.value,
+                    },
+                  })
+                }
+              />
+            </div>
           </>
         ) : (
           <Description className="-doc-type" text={selectedType.description} />
@@ -152,21 +167,31 @@ export default class TypeDoc extends React.Component<TypeDocProps> {
           onDeleteEdge,
         )}
         {this.state.isEditing && (
-          <>
-            <Button
-              variant="contained"
-              onClick={() => {
-                onEditType(this.props.selectedType.id, selectedType);
-                this.setState({ isEditing: false, selectedType: null });
-              }}
-              color="primary"
-            >
-              Save changes
-            </Button>
-            <Button variant="contained" onClick={() => this.setState({ isEditing: false })}>
-              Cancel
-            </Button>
-          </>
+          <div className="button-row">
+            <div className="button">
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => {
+                  onEditType(this.props.selectedType.id, selectedType);
+                  this.setState({ isEditing: false, selectedType: null });
+                }}
+                color="primary"
+                startIcon={<SaveIcon />}
+              >
+                Save
+              </Button>
+            </div>
+            <div className="button">
+              <Button
+                color="primary"
+                size="small"
+                onClick={() => this.setState({ isEditing: false })}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
         )}
       </>
     );
@@ -241,13 +266,13 @@ export default class TypeDoc extends React.Component<TypeDocProps> {
       if (fields.length === 0) return null;
       return (
         <div className="doc-category">
+          <div className="title">fields</div>
           <AddNewButton
             selectedType={selectedType}
             onEditEdge={onEditEdge}
             scalars={scalars}
             enableEditing={enableEditing}
           />
-          <div className="title">fields</div>
           {fields.map(field => {
             const props: any = {
               key: field.name,
@@ -297,17 +322,6 @@ const ListItem = ({
 }: any) => {
   return (
     <div key={key} className={className}>
-      <Button
-        onClick={() => {
-          enableEditing();
-          setTimeout(() => {
-            //do this after state has been updated in enableEditing
-            onDeleteEdge(field.name);
-          });
-        }}
-      >
-        Delete field
-      </Button>
       {!isEditing && <a className="field-name">{highlightTerm(field.name, filter)}</a>}
       {isEditing && (
         <Input
@@ -366,6 +380,18 @@ const ListItem = ({
       ) : (
         <Markdown text={field.description} className="description-box -field" />
       )}
+
+      <IconButton style={{ position: 'absolute', top: '10px', right: '10px' }}>
+        <DeleteIcon
+          onClick={() => {
+            enableEditing();
+            setTimeout(() => {
+              //do this after state has been updated in enableEditing
+              onDeleteEdge(field.name);
+            });
+          }}
+        />
+      </IconButton>
     </div>
   );
 };
@@ -373,17 +399,24 @@ const ListItem = ({
 let counter = 1;
 
 const AddNewButton = ({ onEditEdge, scalars, enableEditing }: any) => (
-  <Button
-    variant="contained"
-    onClick={() => {
-      enableEditing();
-      setTimeout(() => {
-        //do this after state has been updated in enableEditing
-        const id = 'test' + counter++;
-        onEditEdge(id, id, id + ' description', scalars[0]);
-      });
-    }}
-  >
-    New field
-  </Button>
+  <div className="button">
+    <Button
+      startIcon={<AddIcon />}
+      style={{
+        marginBottom: '10px',
+      }}
+      size="small"
+      variant="contained"
+      onClick={() => {
+        enableEditing();
+        setTimeout(() => {
+          //do this after state has been updated in enableEditing
+          const id = 'test' + counter++;
+          onEditEdge(id, id, id + ' description', scalars[0]);
+        });
+      }}
+    >
+      Add field
+    </Button>
+  </div>
 );

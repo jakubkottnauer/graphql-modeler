@@ -18,7 +18,6 @@ import { MuiThemeProvider } from '@material-ui/core/styles';
 
 import GraphViewport from './GraphViewport';
 import DocExplorer from './doc-explorer/DocExplorer';
-import PoweredBy from './utils/PoweredBy';
 import Settings from './settings/Settings';
 
 import './Voyager.css';
@@ -226,9 +225,9 @@ export default class Voyager extends React.Component<VoyagerProps> {
             onEditEdge={this.handleEditEdge}
             onEditType={this.handleEditType}
             onDeleteType={this.handleDeleteType}
+            updateSchema={this.updateSchema}
             scalars={[...scalars, ...types]}
           />
-          <PoweredBy />
         </div>
       </div>
     );
@@ -264,6 +263,18 @@ export default class Voyager extends React.Component<VoyagerProps> {
       />
     );
   }
+
+  updateSchema = (schema: string | null) => {
+    if (schema) {
+      this.updateIntrospection(
+        { data: introspectionFromSchema(buildSchema(schema)) },
+        this.state.displayOptions,
+      );
+    } else {
+      this.fetchIntrospection();
+    }
+    this.setState({ selectedTypeID: null });
+  };
 
   handleDisplayOptionsChange = delta => {
     const displayOptions = { ...this.state.displayOptions, ...delta };
@@ -389,14 +400,7 @@ export default class Voyager extends React.Component<VoyagerProps> {
         {
           name: typeData.name.toLowerCase(),
           description: null,
-          args: [
-            {
-              name: 'id',
-              description: null,
-              type: { kind: 'SCALAR', name: 'ID', ofType: null },
-              defaultValue: null,
-            },
-          ],
+          args: [],
           type: {
             kind: 'OBJECT',
             name: typeData.name,
@@ -405,10 +409,12 @@ export default class Voyager extends React.Component<VoyagerProps> {
         },
       ];
     }
-    // select the modified type as current type
-    this.setState({ selectedTypeID: 'TYPE::' + typeData.name });
+
     //@ts-ignore
     this.updateIntrospection(data, this.state.displayOptions);
+
+    // select the modified type as current type
+    this.setState({ selectedTypeID: 'TYPE::' + typeData.name });
   };
 
   handleDeleteType = (typeId: string) => {

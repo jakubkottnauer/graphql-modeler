@@ -29,7 +29,7 @@ export default class Settings extends React.Component<SettingsProps> {
             onChange={event => onChange({ sortByAlphabet: event.target.checked })}
           />
           <label htmlFor="sort">Sort by Alphabet</label>
-          <Checkbox
+          {/* <Checkbox
             id="skip"
             color="primary"
             checked={!!options.skipRelay}
@@ -42,7 +42,7 @@ export default class Settings extends React.Component<SettingsProps> {
             checked={!!options.skipDeprecated}
             onChange={event => onChange({ skipDeprecated: event.target.checked })}
           />
-          <label htmlFor="deprecated">Skip deprecated</label>
+          <label htmlFor="deprecated">Skip deprecated</label> */}
           <Checkbox
             id="showLeafFields"
             color="primary"

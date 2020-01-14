@@ -1,10 +1,9 @@
 # GraphQL Modeler [WIP]
 
-A GraphQL Voyager fork with schema editing capabilities
+A GraphQL Voyager fork with schema editing capabilities, designed as a drop-in replacement for GraphQL Voyager.
 
-[![jsDelivr](https://data.jsdelivr.com/v1/package/npm/graphql-voyager/badge)](https://www.jsdelivr.com/package/npm/graphql-voyager)
-[![David](https://img.shields.io/david/APIs-guru/graphql-voyager.svg)](https://david-dm.org/APIs-guru/graphql-voyager)
-[![David](https://img.shields.io/david/dev/APIs-guru/graphql-voyager.svg)](https://david-dm.org/APIs-guru/graphql-voyager?type=dev)
+A few notes: this is a work in progress and perhaps will never be finished or maintained (the fork is used in an internal project). There are some changes that you may not be OK with (some bits of text changed, required React version is >=16.8 because of hooks, etc.).
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ![graphql-voyager logo](./docs/cover.png)
