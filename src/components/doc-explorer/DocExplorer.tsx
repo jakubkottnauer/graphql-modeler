@@ -42,7 +42,7 @@ interface DocExplorerProps {
   updateSchema: (schema: string | null) => void;
 }
 
-const initialNav = { title: 'Type List', type: null, searchValue: null };
+const initialNav = { title: 'Settings', type: null, searchValue: null };
 
 export default class DocExplorer extends React.Component<DocExplorerProps> {
   state = { navStack: [initialNav], typeForInfoPopover: null };
@@ -53,7 +53,6 @@ export default class DocExplorer extends React.Component<DocExplorerProps> {
     const { navStack } = state;
     const lastNav = navStack[navStack.length - 1];
     const lastTypeID = lastNav.type ? lastNav.type.id : null;
-
     // if type with the lastTypeID no longer exists -> modify navstack because it has been renamed
     if (selectedTypeID && lastTypeID && !typeGraph.nodes[lastTypeID]) {
       const type = typeGraph.nodes[selectedTypeID];
@@ -100,7 +99,7 @@ export default class DocExplorer extends React.Component<DocExplorerProps> {
     const previousNav = navStack[navStack.length - 2];
     const currentNav = navStack[navStack.length - 1];
 
-    const name = currentNav.type ? currentNav.type.name : 'Schema';
+    const name = currentNav.type ? currentNav.type.name : 'Data Model';
     return (
       <div className="type-doc" key={navStack.length}>
         <NewModelButton defaultSchema={defaultSchema} updateSchema={updateSchema} />
@@ -108,11 +107,13 @@ export default class DocExplorer extends React.Component<DocExplorerProps> {
         <RevertChanges updateSchema={updateSchema} />
         {this.renderNavigation(previousNav, currentNav)}
         <div className="scroll-area">
-          <SearchBox
-            placeholder={`Search ${name}...`}
-            value={currentNav.searchValue}
-            onSearch={this.handleSearch}
-          />
+          {!currentNav.type && (
+            <SearchBox
+              placeholder={`Search ${name}...`}
+              value={currentNav.searchValue}
+              onSearch={this.handleSearch}
+            />
+          )}
           {this.renderCurrentNav(currentNav)}
           {currentNav.searchValue && (
             <OtherSearchResults

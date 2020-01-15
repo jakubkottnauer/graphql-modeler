@@ -186,8 +186,8 @@ const TypeDoc = ({
     if (fields.length === 0) return null;
     return (
       <div className={classNames('doc-category', isEditing && 'editing')}>
-        <div className="title">fields</div>
-        <AddNewButton selectedType={selectedType} onEditEdge={onEditEdge} scalars={scalars} />
+        <div className="title">attributes</div>
+        <AddNewButton selectedType={usedSelectedType} onEditEdge={onEditEdge} scalars={scalars} />
         {fields.map(field => {
           const props: any = {
             key: field.name,
@@ -228,7 +228,7 @@ const TypeDoc = ({
         <div className="button-row">
           <div className="button">
             <Button size="small" variant="contained" color="primary" onClick={enableEditing}>
-              Edit type
+              Edit
             </Button>
           </div>
           <div className="button">
@@ -237,7 +237,7 @@ const TypeDoc = ({
               variant="contained"
               onClick={() => onDeleteType(usedSelectedType.id)}
             >
-              Delete type
+              Delete setting
             </Button>
           </div>
         </div>
@@ -247,12 +247,15 @@ const TypeDoc = ({
         <>
           <div className="type-edit-wrapper">
             <Input
+              placeholder="Setting name"
+              required
               value={usedSelectedType.name}
               onChange={e => setSelectedType({ ...selectedType, name: e.currentTarget.value })}
             />
           </div>
           <div className="type-edit-wrapper">
             <Input
+              placeholder="Setting description"
               value={usedSelectedType.description}
               onChange={e =>
                 setSelectedType({ ...selectedType, description: e.currentTarget.value })
@@ -486,7 +489,7 @@ const ListItemEdit = React.forwardRef<HTMLDivElement, any>(
 
 let counter = 1;
 
-const AddNewButton = ({ onEditEdge, scalars }: any) => (
+const AddNewButton = ({ selectedType, onEditEdge, scalars }: any) => (
   <div className="button">
     <Button
       startIcon={<AddIcon />}
@@ -496,11 +499,14 @@ const AddNewButton = ({ onEditEdge, scalars }: any) => (
       size="small"
       variant="contained"
       onClick={() => {
-        const id = 'test' + counter++;
+        let id = 'attribute' + counter++;
+        while (selectedType && selectedType.fields[id]) {
+          id = 'attribute' + counter++;
+        }
         onEditEdge(id, id, id + ' description', scalars[0], []);
       }}
     >
-      Add field
+      New attribute
     </Button>
   </div>
 );

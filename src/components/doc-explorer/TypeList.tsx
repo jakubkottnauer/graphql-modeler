@@ -22,11 +22,11 @@ interface TypeListProps {
 const createNewType = (id: string) => ({
   kind: 'OBJECT',
   name: id,
-  description: 'My new type',
+  description: null,
   fields: [
     {
       name: 'id',
-      description: 'new field',
+      description: null,
       args: [],
       type: {
         kind: 'NON_NULL',
@@ -56,12 +56,18 @@ export default class TypeList extends React.Component<TypeListProps> {
       .reject({ id: rootType && rootType.id })
       .sortBy('name')
       .value();
-
+    const newTypeName = 'NewSetting';
     return (
       <div className="doc-explorer-type-list">
         <div className="button">
           <Button
-            onClick={() => this.props.onEditType('Test', createNewType('NewType' + counter++))}
+            onClick={() => {
+              let typeName = newTypeName + counter++;
+              while (typeGraph.nodes['TYPE::' + typeName]) {
+                typeName = newTypeName + counter++;
+              }
+              this.props.onEditType(typeName, createNewType(typeName));
+            }}
             variant="contained"
             startIcon={<AddIcon />}
             size="small"
@@ -69,7 +75,7 @@ export default class TypeList extends React.Component<TypeListProps> {
               marginBottom: '10px',
             }}
           >
-            Add type
+            Add setting
           </Button>
         </div>
         {rootType && renderItem(rootType, '-root')}

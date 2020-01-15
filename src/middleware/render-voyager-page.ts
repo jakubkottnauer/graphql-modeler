@@ -15,7 +15,7 @@ export default function renderVoyagerPage(options: MiddlewareOptions) {
 <head>
   <meta charset=utf-8 />
   <meta name="viewport" content="user-scalable=no, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0">
-  <title>GraphQL Voyager</title>
+  <title>Data Model Voyager</title>
   <style>
     body {
       padding: 0;

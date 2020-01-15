@@ -34,7 +34,8 @@
   }
 
   @media (--small-viewport) {
-    & > .doc-panel, & > .viewport {
+    & > .doc-panel,
+    & > .viewport {
       height: 50%;
       width: 100%;
       max-width: none;
@@ -51,6 +52,7 @@
     padding: var(--spacing-unit);
 
     & > .setting-other-options {
+      padding-top: var(--spacing-unit);
       display: flex;
 
       & > label:first-of-type {

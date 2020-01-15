@@ -1,6 +1,6 @@
 import * as React from 'react';
 import Checkbox from '@material-ui/core/Checkbox';
-import RootSelector from './RootSelector';
+// import RootSelector from './RootSelector';
 
 interface SettingsProps {
   schema: any;
@@ -10,17 +10,18 @@ interface SettingsProps {
 
 export default class Settings extends React.Component<SettingsProps> {
   render() {
-    let { schema, options, onChange } = this.props;
+    const { options, onChange } = this.props;
 
     return (
       <div className="menu-content">
-        <div className="setting-change-root">
+        {/* Root selector is currently broken because we treat the first node as the root */}
+        {/* <div className="setting-change-root">
           <RootSelector
             schema={schema}
             rootType={options.rootType}
             onChange={rootType => onChange({ rootType })}
           />
-        </div>
+        </div> */}
         <div className="setting-other-options">
           <Checkbox
             id="sort"
@@ -28,28 +29,14 @@ export default class Settings extends React.Component<SettingsProps> {
             checked={!!options.sortByAlphabet}
             onChange={event => onChange({ sortByAlphabet: event.target.checked })}
           />
-          <label htmlFor="sort">Sort by Alphabet</label>
-          {/* <Checkbox
-            id="skip"
-            color="primary"
-            checked={!!options.skipRelay}
-            onChange={event => onChange({ skipRelay: event.target.checked })}
-          />
-          <label htmlFor="skip">Skip Relay</label>
-          <Checkbox
-            id="deprecated"
-            color="primary"
-            checked={!!options.skipDeprecated}
-            onChange={event => onChange({ skipDeprecated: event.target.checked })}
-          />
-          <label htmlFor="deprecated">Skip deprecated</label> */}
+          <label htmlFor="sort">Alphabetical order</label>
           <Checkbox
             id="showLeafFields"
             color="primary"
             checked={!!options.showLeafFields}
             onChange={event => onChange({ showLeafFields: event.target.checked })}
           />
-          <label htmlFor="showLeafFields">Show leaf fields</label>
+          <label htmlFor="showLeafFields">Show leaf attributes</label>
         </div>
       </div>
     );

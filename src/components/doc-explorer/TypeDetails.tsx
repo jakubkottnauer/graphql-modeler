@@ -17,7 +17,7 @@ export default class TypeDetails extends React.Component<TypeDetailsProps> {
 
     return (
       <div className="doc-category">
-        <div className="title">fields</div>
+        <div className="title">attributes</div>
         {_.map(type.inputFields, field => {
           return (
             <div key={field.id} className="item">
