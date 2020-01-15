@@ -12,6 +12,7 @@ import DeleteIcon from '@material-ui/icons/Delete';
 import AddIcon from '@material-ui/icons/Add';
 import SaveIcon from '@material-ui/icons/Save';
 import DragIndicatorIcon from '@material-ui/icons/DragIndicator';
+import EditIcon from '@material-ui/icons/Edit';
 
 import './TypeDoc.css';
 import {
@@ -33,6 +34,7 @@ import Description from './Description';
 import TypeLink from './TypeLink';
 import WrappedTypeName from './WrappedTypeName';
 import Argument from './Argument';
+import { AddTypeButton } from './TypeList';
 
 interface TypeDocProps {
   selectedType: any;
@@ -120,6 +122,11 @@ const TypeDoc = ({
 
   const onDeleteEdge = fieldId => {
     const typeCopy = isEditing ? _.cloneDeep(usedSelectedType) : enableEditing();
+    if (Object.keys(typeCopy.fields).length === 1) {
+      // deleting last field -> delete type
+      onDeleteType(typeCopy.id);
+      return;
+    }
     delete typeCopy.fields[fieldId];
     setSelectedType(typeCopy);
   };
@@ -227,7 +234,13 @@ const TypeDoc = ({
       {!isEditing && (
         <div className="button-row">
           <div className="button">
-            <Button size="small" variant="contained" color="primary" onClick={enableEditing}>
+            <Button
+              size="small"
+              variant="contained"
+              color="primary"
+              onClick={enableEditing}
+              startIcon={<EditIcon />}
+            >
               Edit
             </Button>
           </div>
@@ -237,8 +250,11 @@ const TypeDoc = ({
               variant="contained"
               onClick={() => onDeleteType(usedSelectedType.id)}
             >
-              Delete setting
+              Delete
             </Button>
+          </div>
+          <div className="button">
+            <AddTypeButton typeGraph={typeGraph} onEditType={onEditType} />
           </div>
         </div>
       )}

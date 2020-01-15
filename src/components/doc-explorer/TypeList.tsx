@@ -56,27 +56,16 @@ export default class TypeList extends React.Component<TypeListProps> {
       .reject({ id: rootType && rootType.id })
       .sortBy('name')
       .value();
-    const newTypeName = 'NewSetting';
+
     return (
       <div className="doc-explorer-type-list">
-        <div className="button">
-          <Button
-            onClick={() => {
-              let typeName = newTypeName + counter++;
-              while (typeGraph.nodes['TYPE::' + typeName]) {
-                typeName = newTypeName + counter++;
-              }
-              this.props.onEditType(typeName, createNewType(typeName));
-            }}
-            variant="contained"
-            startIcon={<AddIcon />}
-            size="small"
-            style={{
-              marginBottom: '10px',
-            }}
-          >
-            Add setting
-          </Button>
+        <div
+          className="button"
+          style={{
+            marginBottom: '10px',
+          }}
+        >
+          <AddTypeButton typeGraph={typeGraph} onEditType={this.props.onEditType} />
         </div>
         {rootType && renderItem(rootType, '-root')}
         {_.map(types, type => renderItem(type, ''))}
@@ -98,3 +87,22 @@ export default class TypeList extends React.Component<TypeListProps> {
     }
   }
 }
+
+const newTypeName = 'NewSetting';
+
+export const AddTypeButton = ({ typeGraph, onEditType }: any) => (
+  <Button
+    onClick={() => {
+      let typeName = newTypeName + counter++;
+      while (typeGraph.nodes['TYPE::' + typeName]) {
+        typeName = newTypeName + counter++;
+      }
+      onEditType(typeName, createNewType(typeName));
+    }}
+    variant="contained"
+    startIcon={<AddIcon />}
+    size="small"
+  >
+    New setting
+  </Button>
+);

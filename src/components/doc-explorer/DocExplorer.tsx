@@ -29,13 +29,6 @@ interface DocExplorerProps {
   onSelectNode: (id: string) => void;
   onSelectEdge: (id: string) => void;
 
-  onEditEdge: (
-    typeId: string,
-    edgeId: string,
-    newEdgeId: string,
-    newDescription: string,
-    newDataType: string,
-  ) => void;
   onEditType: (typeId: string, typeData: any) => void;
   onDeleteType: (typeId) => void;
   scalars: string[];

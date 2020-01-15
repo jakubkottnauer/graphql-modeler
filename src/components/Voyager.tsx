@@ -225,7 +225,6 @@ export default class Voyager extends React.Component<VoyagerProps> {
             onFocusNode={onFocusNode}
             onSelectNode={this.handleSelectNode}
             onSelectEdge={this.handleSelectEdge}
-            onEditEdge={this.handleEditEdge}
             onEditType={this.handleEditType}
             onDeleteType={this.handleDeleteType}
             updateSchema={this.updateSchema}
@@ -298,45 +297,6 @@ export default class Voyager extends React.Component<VoyagerProps> {
       const selectedTypeID = extractTypeId(selectedEdgeID);
       this.setState({ selectedTypeID, selectedEdgeID });
     }
-  };
-
-  handleEditEdge = (typeId, edgeId, newEdgeId, newDescription, newDataType) => {
-    if (!typeId) return;
-    const typeName = typeId.split('::')[1];
-    const fieldName = edgeId;
-    const data = { ...this.state.introspectionData };
-
-    const typeIndex = data.data.__schema.types.findIndex(
-      t => t.kind === 'OBJECT' && t.name === typeName,
-    );
-    const fieldIndex = data.data.__schema.types[typeIndex].fields.findIndex(
-      f => f.name === fieldName,
-    );
-
-    if (fieldIndex > -1) {
-      // edit existing property
-      //@ts-ignore
-      data.data.__schema.types[typeIndex].fields[fieldIndex].description = newDescription;
-      //@ts-ignore
-      data.data.__schema.types[typeIndex].fields[fieldIndex].name = newEdgeId;
-      //@ts-ignore
-      data.data.__schema.types[typeIndex].fields[fieldIndex].type.name = newDataType;
-    } else {
-      // create a new property
-      data.data.__schema.types[typeIndex].fields = [
-        ...data.data.__schema.types[typeIndex].fields,
-        {
-          name: 'NEW',
-          description: newDescription,
-          args: [],
-          type: { kind: 'SCALAR', name: newDataType, ofType: null },
-          isDeprecated: false,
-          deprecationReason: null,
-        },
-      ];
-    }
-    //@ts-ignore
-    this.updateIntrospection(data, this.state.displayOptions);
   };
 
   handleEditType = (typeId: string, typeData: any) => {
