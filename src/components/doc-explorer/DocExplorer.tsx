@@ -24,7 +24,7 @@ interface DocExplorerProps {
   defaultSchema?: string;
   selectedTypeID: string;
   selectedEdgeID: string;
-
+  saveToSvg: () => void;
   onFocusNode: (id: string) => void;
   onSelectNode: (id: string) => void;
   onSelectEdge: (id: string) => void;
@@ -78,7 +78,7 @@ export default class DocExplorer extends React.Component<DocExplorerProps> {
   }
 
   render() {
-    const { defaultSchema, updateSchema, typeGraph } = this.props;
+    const { defaultSchema, updateSchema, typeGraph, saveToSvg } = this.props;
 
     if (!typeGraph) {
       return (
@@ -96,7 +96,7 @@ export default class DocExplorer extends React.Component<DocExplorerProps> {
     return (
       <div className="type-doc" key={navStack.length}>
         <NewModelButton defaultSchema={defaultSchema} updateSchema={updateSchema} />
-        <ImportExportButton updateSchema={updateSchema} />
+        <ImportExportButton updateSchema={updateSchema} saveToSvg={saveToSvg} />
         <RevertChanges updateSchema={updateSchema} />
         {this.renderNavigation(previousNav, currentNav)}
         <div className="scroll-area">
@@ -250,11 +250,13 @@ const RevertChanges = ({ updateSchema }: { updateSchema: (schema: string | null)
 const ImportExportDialog = ({
   updateSchema,
   dialogShown,
+  saveToSvg,
   setDialogShown,
 }: {
   updateSchema: (schema: string) => void;
   dialogShown: boolean;
   setDialogShown: (shown: boolean) => void;
+  saveToSvg: () => void;
 }) => {
   const [schema, setSchema] = React.useState('');
 
@@ -279,23 +281,7 @@ const ImportExportDialog = ({
         />
       </DialogContent>
       <DialogActions>
-        <Button
-          onClick={() => {
-            const originalContent = document.getElementsByClassName('viewport')[0].childNodes[0];
-            const content = originalContent.cloneNode(true);
-            // remove pan/zoom controls
-            content.removeChild(content.childNodes[2]);
-            const a = document.createElement('a');
-            // @ts-ignore
-            a.href = 'data:image/svg+xml;utf8,' + escape(content.outerHTML);
-            a.download = 'model.svg';
-            a.target = '_blank';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-          }}
-          color="primary"
-        >
+        <Button onClick={saveToSvg} color="primary">
           Export as SVG
         </Button>
         <div style={{ flex: '1 0 0' }} />
@@ -321,8 +307,10 @@ const ImportExportDialog = ({
 
 const ImportExportButton = ({
   updateSchema,
+  saveToSvg,
 }: {
   updateSchema: (schema: string | null) => void;
+  saveToSvg: () => void;
 }) => {
   const [dialogShown, setDialogShown] = React.useState(false);
 
@@ -334,6 +322,7 @@ const ImportExportButton = ({
           updateSchema={updateSchema}
           dialogShown={dialogShown}
           setDialogShown={setDialogShown}
+          saveToSvg={saveToSvg}
         />
       )}
     </>

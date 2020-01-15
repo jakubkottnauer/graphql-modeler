@@ -10,6 +10,7 @@ import * as _ from 'lodash';
 import { getSchema, extractTypeId } from '../introspection';
 import { SVGRender, getTypeGraph } from '../graph/';
 import { WorkerCallback } from '../utils/types';
+import FileSaver from 'file-saver';
 
 import * as React from 'react';
 import * as PropTypes from 'prop-types';
@@ -218,6 +219,11 @@ export default class Voyager extends React.Component<VoyagerProps> {
         <div className="contents">
           {panelHeader}
           <DocExplorer
+            saveToSvg={() => {
+              this.svgRenderer.renderSvg(typeGraph, this.state.displayOptions).then(data => {
+                FileSaver.saveAs(new Blob([data], { type: 'image/svg+xml' }), 'model.svg');
+              });
+            }}
             defaultSchema={this.props.defaultSchema}
             typeGraph={typeGraph}
             selectedTypeID={selectedTypeID}
