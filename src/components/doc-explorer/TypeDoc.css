@@ -97,6 +97,10 @@
   margin: var(--panel-spacing) 0 0;
   cursor: pointer;
 
+  &.editing {
+    cursor: unset;
+  }
+
   & > .item {
     padding: var(--panel-items-spacing) var(--panel-spacing);
     color: var(--text-color);

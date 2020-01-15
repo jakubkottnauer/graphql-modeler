@@ -305,7 +305,6 @@ export default class Voyager extends React.Component<VoyagerProps> {
     const typeName = typeId.split('::')[1];
     const fieldName = edgeId;
     const data = { ...this.state.introspectionData };
-    //FIELD::Film::director
 
     const typeIndex = data.data.__schema.types.findIndex(
       t => t.kind === 'OBJECT' && t.name === typeName,
@@ -347,6 +346,11 @@ export default class Voyager extends React.Component<VoyagerProps> {
     const typeIndex = data.data.__schema.types.findIndex(
       t => t.kind === 'OBJECT' && t.name === typeName,
     );
+    const scalars = this.state.introspectionData
+      ? this.state.introspectionData.data.__schema.types
+          .filter(x => x.kind === 'SCALAR')
+          .map(x => x.name)
+      : [];
     if (typeIndex > -1) {
       // edit existing type
       data.data.__schema.types[typeIndex].name = typeData.name;
@@ -360,11 +364,8 @@ export default class Voyager extends React.Component<VoyagerProps> {
             const field = _.cloneDeep(oldField);
             field.name = newField.name;
             field.description = newField.description;
-            if (field.type?.ofType?.name) {
-              field.type.ofType.name = newField.type.name;
-            } else {
-              field.type.name = newField.type.name;
-            }
+            field.type = createNestedType(newField.typeWrappers, newField.type.name, scalars);
+
             return field;
           } else {
             // a field has been deleted
@@ -384,11 +385,7 @@ export default class Voyager extends React.Component<VoyagerProps> {
           const field = _.cloneDeep(data.data.__schema.types[typeIndex].fields[0]);
           field.name = newField.name;
           field.description = newField.description;
-          if (field.type?.ofType?.name) {
-            field.type.ofType.name = newField.type.name;
-          } else {
-            field.type.name = newField.type.name;
-          }
+          field.type = createNestedType(newField.typeWrappers, newField.type.name, scalars);
           data.data.__schema.types[typeIndex].fields.push(field);
         }
       }
@@ -412,11 +409,7 @@ export default class Voyager extends React.Component<VoyagerProps> {
           name: typeData.name.toLowerCase(),
           description: null,
           args: [],
-          type: {
-            kind: 'OBJECT',
-            name: typeData.name,
-            ofType: null,
-          },
+          type: createNestedType([], typeData.name, scalars),
         },
       ];
     }
@@ -462,6 +455,21 @@ export default class Voyager extends React.Component<VoyagerProps> {
 // Duck-type promise detection.
 function isPromise(value) {
   return typeof value === 'object' && typeof value.then === 'function';
+}
+
+function createNestedType(typeWrappers: string[], typeName: string, scalars: string[]) {
+  let finalType = {
+    kind: scalars.includes(typeName) ? 'SCALAR' : 'OBJECT',
+    name: typeName,
+    ofType: null,
+  };
+  if (typeWrappers.includes('NON_NULL')) {
+    finalType = { kind: 'NON_NULL', name: null, ofType: _.cloneDeep(finalType) };
+  }
+  if (typeWrappers.includes('LIST')) {
+    finalType = { kind: 'LIST', name: null, ofType: _.cloneDeep(finalType) };
+  }
+  return finalType;
 }
 
 function replaceTypeWith(data: any, typeToReplace: string, newType: string | null) {

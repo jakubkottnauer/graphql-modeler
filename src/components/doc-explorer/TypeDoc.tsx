@@ -3,6 +3,8 @@ import * as React from 'react';
 import * as classNames from 'classnames';
 import Button from '@material-ui/core/Button';
 import IconButton from '@material-ui/core/IconButton';
+import FormControlLabel from '@material-ui/core/FormControlLabel';
+import Checkbox from '@material-ui/core/Checkbox';
 import Select from '@material-ui/core/Select';
 import Input from '@material-ui/core/Input';
 import MenuItem from '@material-ui/core/MenuItem';
@@ -81,10 +83,12 @@ const TypeDoc = ({
   };
 
   React.useEffect(() => {
-    selectedItemRef.current?.scrollIntoViewIfNeeded();
+    if (selectedItemRef.current?.scrollIntoViewIfNeeded) {
+      selectedItemRef.current?.scrollIntoViewIfNeeded();
+    }
   }, [selectedItemRef.current]);
 
-  const onEditEdge = (fieldId, newFieldId, newDescription, newDataType) => {
+  const onEditEdge = (fieldId, newFieldId, newDescription, newDataType, newTypeWrappers) => {
     const typeCopy = isEditing ? _.cloneDeep(usedSelectedType) : enableEditing();
     if (!typeCopy.fields[fieldId]) {
       typeCopy.fields[fieldId] = _.cloneDeep(typeCopy.fields[Object.keys(typeCopy.fields)[0]]);
@@ -95,6 +99,7 @@ const TypeDoc = ({
     typeCopy.fields[fieldId].description = newDescription;
     typeCopy.fields[fieldId].type = { ...typeCopy.fields[fieldId].type };
     typeCopy.fields[fieldId].type.name = newDataType;
+    typeCopy.fields[fieldId].typeWrappers = newTypeWrappers;
     setSelectedType(typeCopy);
   };
 
@@ -148,7 +153,7 @@ const TypeDoc = ({
     if (types.length === 0) return null;
 
     return (
-      <div className="doc-category">
+      <div className={classNames('doc-category', isEditing && 'editing')}>
         <div className="title">{typesTitle}</div>
         {_.map(types, type => {
           let props: any = {
@@ -180,7 +185,7 @@ const TypeDoc = ({
     });
     if (fields.length === 0) return null;
     return (
-      <div className="doc-category">
+      <div className={classNames('doc-category', isEditing && 'editing')}>
         <div className="title">fields</div>
         <AddNewButton selectedType={selectedType} onEditEdge={onEditEdge} scalars={scalars} />
         {fields.map(field => {
@@ -334,37 +339,38 @@ const ListItem = React.forwardRef<HTMLDivElement, any>(
       getNode: () => elementRef.current,
     }));
     const opacity = props.isDragging ? 0 : 1;
-    return (
-      <div key={key} className={className} ref={elementRef} style={{ opacity }}>
-        <a className="field-name">{highlightTerm(field.name, filter)}</a>
 
-        <span
-          className={classNames('args-wrap', {
-            '-empty': _.isEmpty(field.args),
-          })}
-        >
-          {!_.isEmpty(field.args) && (
-            <span key="args" className="args">
-              {_.map(field.args, arg => (
-                <Argument
-                  key={arg.name}
-                  arg={arg}
-                  expanded={field.id === selectedId}
-                  onTypeLink={onTypeLink}
-                />
-              ))}
-            </span>
-          )}
-        </span>
-        <WrappedTypeName container={field} onTypeLink={onTypeLink} />
-        {field.isDeprecated && <span className="doc-alert-text"> DEPRECATED</span>}
-        <Markdown text={field.description} className="description-box -field" />
-        <IconButton
-          style={{ position: 'absolute', top: '10px', right: '10px' }}
-          onClick={() => onDeleteEdge(field.name)}
-        >
-          <DeleteIcon />
-        </IconButton>
+    return (
+      <div key={key} className={className} ref={elementRef} style={{ opacity, display: 'flex' }}>
+        <div style={{ width: '250px' }}>
+          <a className="field-name">{highlightTerm(field.name, filter)}</a>
+          <span
+            className={classNames('args-wrap', {
+              '-empty': _.isEmpty(field.args),
+            })}
+          >
+            {!_.isEmpty(field.args) && (
+              <span key="args" className="args">
+                {_.map(field.args, arg => (
+                  <Argument
+                    key={arg.name}
+                    arg={arg}
+                    expanded={field.id === selectedId}
+                    onTypeLink={onTypeLink}
+                  />
+                ))}
+              </span>
+            )}
+          </span>
+          <WrappedTypeName container={field} onTypeLink={onTypeLink} />
+          {field.isDeprecated && <span className="doc-alert-text"> DEPRECATED</span>}
+          <Markdown text={field.description} className="description-box -field" />
+        </div>
+        <div className="edit-field-icon-column">
+          <IconButton onClick={() => onDeleteEdge(field.name)}>
+            <DeleteIcon />
+          </IconButton>
+        </div>
       </div>
     );
   },
@@ -398,15 +404,24 @@ const ListItemEdit = React.forwardRef<HTMLDivElement, any>(
     const opacity = props.isDragging ? 0 : 1;
 
     const onEditName = (name: string) =>
-      onEditEdge(field.originalName, name, field.description, field.type.name);
+      onEditEdge(field.originalName, name, field.description, field.type.name, field.typeWrappers);
     const onEditDescription = (description: string) =>
-      onEditEdge(field.originalName, field.name, description, field.type.name);
+      onEditEdge(field.originalName, field.name, description, field.type.name, field.typeWrappers);
     const onEditType = (type: string) =>
-      onEditEdge(field.originalName, field.name, field.description, type);
+      onEditEdge(field.originalName, field.name, field.description, type, field.typeWrappers);
+    const onCheckBoxChange = (name: 'NON_NULL' | 'LIST', value: boolean) =>
+      onEditEdge(
+        field.originalName,
+        field.name,
+        field.description,
+        field.type.name,
+        value ? [...field.typeWrappers, name] : field.typeWrappers.filter(w => w != name),
+      );
+
     return (
       <div key={key} className={className} ref={elementRef} style={{ opacity, display: 'flex' }}>
         <div className="edit-field-icon-column">
-          <span title="Drag to reorder fields">
+          <span title="Drag to reorder fields" style={{ cursor: 'move' }}>
             <DragIndicatorIcon />
           </span>
         </div>
@@ -436,17 +451,31 @@ const ListItemEdit = React.forwardRef<HTMLDivElement, any>(
             style={{ width: '100%' }}
             placeholder="Description"
           />
+          <div>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={field.typeWrappers.includes('NON_NULL')}
+                  onChange={e => onCheckBoxChange('NON_NULL', e.currentTarget.checked)}
+                  color="primary"
+                />
+              }
+              label="Required"
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={field.typeWrappers.includes('LIST')}
+                  onChange={e => onCheckBoxChange('LIST', e.currentTarget.checked)}
+                  color="primary"
+                />
+              }
+              label="List"
+            />
+          </div>
         </div>
         <div className="edit-field-icon-column">
-          <IconButton
-            onClick={() => {
-              enableEditing();
-              setTimeout(() => {
-                //do this after state has been updated in enableEditing
-                onDeleteEdge(field.name);
-              });
-            }}
-          >
+          <IconButton onClick={() => onDeleteEdge(field.name)}>
             <DeleteIcon />
           </IconButton>
         </div>
@@ -468,7 +497,7 @@ const AddNewButton = ({ onEditEdge, scalars }: any) => (
       variant="contained"
       onClick={() => {
         const id = 'test' + counter++;
-        onEditEdge(id, id, id + ' description', scalars[0]);
+        onEditEdge(id, id, id + ' description', scalars[0], []);
       }}
     >
       Add field
