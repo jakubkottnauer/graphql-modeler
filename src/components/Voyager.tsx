@@ -320,6 +320,12 @@ export default class Voyager extends React.Component<VoyagerProps> {
     if (typeIndex > -1) {
       // edit existing type
       data.data.__schema.types[typeIndex].name = typeData.name;
+
+      if (data.data.__schema.queryType.name === typeName) {
+        // root node has been renamed
+        data.data.__schema.queryType.name = typeData.name;
+      }
+
       // update fields
       const fieldKeys = Object.keys(typeData.fields);
       data.data.__schema.types[typeIndex].fields = data.data.__schema.types[typeIndex].fields.map(
@@ -379,7 +385,6 @@ export default class Voyager extends React.Component<VoyagerProps> {
         },
       ];
     }
-
     //@ts-ignore
     this.updateIntrospection(data, this.state.displayOptions);
 
