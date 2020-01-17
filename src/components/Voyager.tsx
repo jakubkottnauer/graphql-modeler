@@ -44,6 +44,7 @@ const defaultDisplayOptions = {
   sortByAlphabet: false,
   showLeafFields: true,
   hideRoot: false,
+  focusOn: undefined,
 };
 
 function normalizeDisplayOptions(options) {

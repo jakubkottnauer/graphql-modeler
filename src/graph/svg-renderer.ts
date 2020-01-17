@@ -88,7 +88,6 @@ function preprocessVizSVG(svgString: string) {
     texts[0].classList.add('field-name');
     //Remove spaces used for text alligment
     texts[1].remove();
-
     if (edgesSources[$field.id]) $field.classList.add('edge-source');
 
     for (var i = 2; i < texts.length; ++i) {
@@ -113,6 +112,10 @@ function preprocessVizSVG(svgString: string) {
       texts[i].classList.add('field-type');
       if (edgesSources[$field.id] && !/[\[\]\!]/.test(str)) texts[i].classList.add('type-link');
     }
+  });
+
+  forEachNode(svg, '.node.type', $derivedType => {
+    $derivedType.classList.add('edge-source');
   });
 
   forEachNode(svg, '.derived-type', $derivedType => {

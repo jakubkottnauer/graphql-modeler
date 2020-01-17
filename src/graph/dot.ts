@@ -1,9 +1,43 @@
 import { stringifyWrappers } from '../introspection/';
 import * as _ from 'lodash';
 
+// memoize existing edges betweens nodes used in focus modus to avoid duplicate edges
+let existingEdges = {};
+// memoize the existence of a path between two (possibly not adjacent nodes) - used to speed up DFS
+let knownPaths = {};
+
 export function getDot(typeGraph, displayOptions): string {
+  existingEdges = {};
+  knownPaths = {};
+
+  const focusMode = !!displayOptions.focusOn;
   function isNode(type) {
     return typeGraph.nodes[type.id] !== undefined;
+  }
+
+  function getEdge(node, field) {
+    const intraNodeEdgeId = `"${node.name}" -> "${field.type.name}"`;
+    const createEdge =
+      !focusMode || !existingEdges[intraNodeEdgeId] || displayOptions.focusOn === node.name;
+    existingEdges[intraNodeEdgeId] = true;
+    if (
+      isNode(field.type) &&
+      createEdge &&
+      (isReachableFromFocused(node) || node.name === displayOptions.focusOn)
+    ) {
+      return `
+      "${node.name}":"${field.name}" -> "${field.type.name}" [
+        id = "${field.id} => ${field.type.id}"
+        label = "${node.name}:${field.name}"
+      ]`;
+    } else if (isNode(field.type) && createEdge) {
+      return `
+      "${node.name}" -> "${field.type.name}" [
+        id = "${node.id} => ${field.type.id}"
+        label = "${node.name}:${field.name}"
+      ]`;
+    }
+    return '';
   }
 
   return (
@@ -28,16 +62,7 @@ export function getDot(typeGraph, displayOptions): string {
           id = "${node.id}"
           label = ${nodeLabel(node)}
         ]
-        ${objectValues(node.fields, field =>
-          isNode(field.type)
-            ? `
-          "${node.name}":"${field.name}" -> "${field.type.name}" [
-            id = "${field.id} => ${field.type.id}"
-            label = "${node.name}:${field.name}"
-          ]
-        `
-            : '',
-        )};
+        ${objectValues(node.fields, field => getEdge(node, field))};
         ${array(
           node.possibleTypes,
           ({ id, type }) => `
@@ -74,25 +99,79 @@ export function getDot(typeGraph, displayOptions): string {
       node.name
     }</FONT><BR/>${kindLabel}</TD>
         </TR>
-        ${objectValues(node.fields, nodeField)}
+        ${objectValues(node.fields, field => nodeField(field, node))}
         ${possibleTypes(node)}
         ${derivedTypes(node)}
       </TABLE>>
     `;
   }
 
-  function canDisplayRow(type) {
+  /**
+   * Returns whether the given node is reachable from the focused node via DFS
+   *
+   */
+  function isReachableFromFocused(node) {
+    const focusedOn = displayOptions.focusOn;
+    if (!focusedOn) {
+      return true;
+    }
+
+    const pathId = `${focusedOn}:${node.name}`;
+    if (knownPaths.hasOwnProperty(pathId)) {
+      return knownPaths[pathId];
+    }
+
+    // DFS
+    const visited = {};
+    const queue = [];
+    visited[focusedOn] = true;
+    queue.push(focusedOn);
+    while (queue.length > 0) {
+      const currentName = queue.shift();
+      const current = typeGraph.nodes['TYPE::' + currentName];
+      if (!current) {
+        // it's possible the type isn't in the graph because it's unreachable
+        knownPaths[pathId] = false;
+        return false;
+      }
+      for (const f of Object.keys(current.fields)) {
+        const currentField = current.fields[f];
+        if (currentField.type.kind === 'OBJECT') {
+          const typeName = currentField.type.name;
+          if (typeName === node.name) {
+            knownPaths[pathId] = true;
+            return true;
+          }
+          if (!visited[typeName]) {
+            visited[typeName] = true;
+            queue.push(typeName);
+          }
+        }
+      }
+    }
+    knownPaths[pathId] = false;
+    return false;
+  }
+
+  function canDisplayRow(type, node) {
+    if (
+      displayOptions.focusOn &&
+      displayOptions.focusOn !== node.name &&
+      !isReachableFromFocused(node)
+    ) {
+      return false;
+    }
     if (type.kind === 'SCALAR' || type.kind === 'ENUM') {
       return displayOptions.showLeafFields;
     }
     return true;
   }
 
-  function nodeField(field) {
+  function nodeField(field, node) {
     const relayIcon = field.relayType ? TEXT('{R}') : '';
     const deprecatedIcon = field.isDeprecated ? TEXT('{D}') : '';
     const parts = stringifyWrappers(field.typeWrappers).map(TEXT);
-    return canDisplayRow(field.type)
+    return canDisplayRow(field.type, node)
       ? `
       <TR>
         <TD ${HtmlId(field.id)} ALIGN="LEFT" PORT="${field.name}">
@@ -151,7 +230,7 @@ function derivedTypes(node) {
   `;
 }
 
-function objectValues<X>(object: { [key: string]: X }, stringify: (X) => string): string {
+function objectValues<X>(object: { [key: string]: X }, stringify: (X, node) => string): string {
   return _.values(object)
     .map(stringify)
     .join('\n');

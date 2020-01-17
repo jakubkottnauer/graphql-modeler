@@ -1,5 +1,6 @@
 import * as React from 'react';
 import Checkbox from '@material-ui/core/Checkbox';
+import FocusSelector from './FocusSelector';
 // import RootSelector from './RootSelector';
 
 interface SettingsProps {
@@ -10,7 +11,7 @@ interface SettingsProps {
 
 export default class Settings extends React.Component<SettingsProps> {
   render() {
-    const { options, onChange } = this.props;
+    const { schema, options, onChange } = this.props;
 
     return (
       <div className="menu-content">
@@ -22,6 +23,13 @@ export default class Settings extends React.Component<SettingsProps> {
             onChange={rootType => onChange({ rootType })}
           />
         </div> */}
+        <div className="setting-change-focus">
+          <FocusSelector
+            schema={schema}
+            rootType={options.focusOn}
+            onChange={focusOn => onChange({ focusOn })}
+          />
+        </div>
         <div className="setting-other-options">
           <Checkbox
             id="sort"

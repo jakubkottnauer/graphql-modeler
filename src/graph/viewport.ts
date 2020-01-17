@@ -103,8 +103,10 @@ export class Viewport {
         $sourceGroup.classList.add('hovered');
         $prevHovered = $sourceGroup;
         let $edge = edgeFrom($sourceGroup.id);
-        $edge.classList.add('hovered');
-        $prevHoveredEdge = $edge;
+        if ($edge) {
+          $edge.classList.add('hovered');
+          $prevHoveredEdge = $edge;
+        }
       } else {
         clearSelection();
       }
@@ -126,7 +128,6 @@ export class Viewport {
 
   selectNode(node: Element) {
     node.classList.add('selected');
-
     _.each(edgesFromNode(node), $edge => {
       $edge.classList.add('highlighted');
       edgeTarget($edge).classList.add('selected-reachable');
@@ -135,12 +136,13 @@ export class Viewport {
     _.each(edgesTo(node.id), $edge => {
       $edge.classList.add('highlighted');
       edgeSource($edge).parentElement.classList.add('selected-reachable');
+      edgeSource($edge).classList.add('selected-reachable');
     });
   }
 
   selectEdgeById(id: string) {
     removeClass(this.$svg, '.edge.selected', 'selected');
-    removeClass(this.$svg, '.edge-source.selected', 'selected');
+    removeClass(this.$svg, '.field.edge-source.selected', 'selected');
     removeClass(this.$svg, '.field.selected', 'selected');
 
     if (id === null) return;
@@ -243,12 +245,22 @@ function edgeFrom(id: String) {
   return document.querySelector(`.edge[data-from='${id}']`);
 }
 
+// if a node is collapsed, there can be several edges leading directly from it
+function edgesFrom(id: String) {
+  return document.querySelectorAll(`.edge[data-from='${id}']`);
+}
+
 function edgesFromNode($node) {
   var edges = [];
   forEachNode($node, '.edge-source', $source => {
     const $edge = edgeFrom($source.id);
     edges.push($edge);
   });
+
+  if ($node && $node.classList.contains('edge-source')) {
+    const $edges = edgesFrom($node.id);
+    $edges.forEach(e => edges.push(e));
+  }
   return edges;
 }
 
