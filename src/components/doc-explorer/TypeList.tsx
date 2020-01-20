@@ -109,7 +109,6 @@ export const AddTypeButton = ({ typeGraph, onEditType }: any) => (
 );
 
 export const CloneTypeButton = ({ typeGraph, onEditType, selectedType, scalars }: any) => {
-  console.log(selectedType, createNewType('gg'));
   return (
     <Button
       onClick={() => {

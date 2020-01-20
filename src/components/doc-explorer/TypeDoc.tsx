@@ -48,6 +48,10 @@ interface TypeDocProps {
   scalars: string[];
 }
 
+// hacky global flag to determine if the current edit state was caused by a new attribute being added
+// automatically reset after 100ms
+let editCausedByNewAttribute = false;
+
 const TypeDoc = ({
   selectedEdgeID,
   typeGraph,
@@ -195,7 +199,7 @@ const TypeDoc = ({
       <div className={classNames('doc-category', isEditing && 'editing')}>
         <div className="title">attributes</div>
         <AddNewButton selectedType={usedSelectedType} onEditEdge={onEditEdge} scalars={scalars} />
-        {fields.map(field => {
+        {fields.map((field, idx) => {
           const props: any = {
             key: field.name,
             className: classNames('item', {
@@ -207,6 +211,7 @@ const TypeDoc = ({
           if (field.id === selectedEdgeID) props.ref = selectedItemRef;
 
           const ListItemComponent = isEditing ? DraggableListItem : ListItem;
+          const isLast = fields.length - 1 === idx;
           return (
             <ListItemComponent
               {...props}
@@ -222,6 +227,7 @@ const TypeDoc = ({
               enableEditing={enableEditing}
               onDeleteEdge={onDeleteEdge}
               moveItem={moveItem}
+              isLast={isLast}
             />
           );
         })}
@@ -420,11 +426,19 @@ const ListItemEdit = React.forwardRef<HTMLDivElement, any>(
       scalars,
       enableEditing,
       onDeleteEdge,
+      isLast,
       ...props
     }: any,
     ref,
   ) => {
     const elementRef = React.useRef(null);
+    const nameInputRef = React.useRef(null);
+    React.useEffect(() => {
+      if (isLast && nameInputRef.current && editCausedByNewAttribute) {
+        nameInputRef.current.focus();
+      }
+    }, [nameInputRef]);
+
     if (props.connectDragSource) {
       props.connectDragSource(elementRef);
       props.connectDropTarget(elementRef);
@@ -463,6 +477,7 @@ const ListItemEdit = React.forwardRef<HTMLDivElement, any>(
             placeholder="Field name"
             required
             style={{ width: '60%' }}
+            inputRef={nameInputRef}
           />
           <Select
             value={field.type.name}
@@ -531,6 +546,10 @@ const AddNewButton = ({ selectedType, onEditEdge, scalars }: any) => (
         while (selectedType && selectedType.fields[id]) {
           id = 'attribute' + counter++;
         }
+        editCausedByNewAttribute = true;
+        setTimeout(() => {
+          editCausedByNewAttribute = false;
+        }, 100);
         onEditEdge(id, id, id + ' description', scalars[0], []);
       }}
     >
