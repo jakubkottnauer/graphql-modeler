@@ -7,33 +7,27 @@ import FocusTypeButton from './FocusTypeButton';
 import TypeInfoPopover from './TypeInfoPopover';
 import OtherSearchResults from './OtherSearchResults';
 import SearchBox from '../utils/SearchBox';
-
+import ImportExportDialog from './DocExplorer/ImportExportDialog';
+import ManageSchemasDialog from './DocExplorer/ManageSchemasDialog';
 import './DocExplorer.css';
-import {
-  Button,
-  Dialog,
-  DialogTitle,
-  TextareaAutosize,
-  DialogContent,
-  DialogActions,
-} from '@material-ui/core';
-import SaveIcon from '@material-ui/icons/Save';
+import { Button } from '@material-ui/core';
 
-interface DocExplorerProps {
+type DocExplorerProps = {
   typeGraph: any;
-  defaultSchema?: string;
+  createEmptySchema: () => void;
   selectedTypeID: string;
   selectedEdgeID: string;
   saveToSvg: () => void;
   onFocusNode: (id: string) => void;
   onSelectNode: (id: string) => void;
   onSelectEdge: (id: string) => void;
-
+  selectedSchema: string | null;
   onEditType: (typeId: string, typeData: any) => void;
   onDeleteType: (typeId) => void;
   scalars: string[];
-  updateSchema: (schema: string | null) => void;
-}
+  updateSchema: (schema: string | null, isNew?: boolean) => void;
+  switchToSchema: (schemaName: string | null) => void;
+};
 
 const initialNav = { title: 'Settings', type: null, searchValue: null };
 
@@ -78,7 +72,14 @@ export default class DocExplorer extends React.Component<DocExplorerProps> {
   }
 
   render() {
-    const { defaultSchema, updateSchema, typeGraph, saveToSvg } = this.props;
+    const {
+      createEmptySchema,
+      updateSchema,
+      typeGraph,
+      saveToSvg,
+      selectedSchema,
+      switchToSchema,
+    } = this.props;
 
     if (!typeGraph) {
       return (
@@ -95,9 +96,14 @@ export default class DocExplorer extends React.Component<DocExplorerProps> {
     const name = currentNav.type ? currentNav.type.name : 'Data Model';
     return (
       <div className="type-doc" key={navStack.length}>
-        <NewModelButton defaultSchema={defaultSchema} updateSchema={updateSchema} />
-        <ImportExportButton updateSchema={updateSchema} saveToSvg={saveToSvg} />
-        <RevertChanges updateSchema={updateSchema} />
+        <p>Current model: {selectedSchema || 'default model'}</p>
+        <NewModelButton createEmptySchema={createEmptySchema} />
+        <ImportExportDialog
+          updateSchema={updateSchema}
+          saveToSvg={saveToSvg}
+          selectedSchema={selectedSchema}
+        />
+        <ManageSchemasDialog selectedSchema={selectedSchema} switchToSchema={switchToSchema} />
         {this.renderNavigation(previousNav, currentNav)}
         <div className="scroll-area">
           {!currentNav.type && (
@@ -225,106 +231,9 @@ export default class DocExplorer extends React.Component<DocExplorerProps> {
 }
 
 const NewModelButton = ({
-  updateSchema,
-  defaultSchema,
+  createEmptySchema,
 }: {
-  defaultSchema?: string;
-  updateSchema: (schema: string | null) => void;
+  createEmptySchema: DocExplorerProps['createEmptySchema'];
 }) => {
-  const emptyModel = `
-  schema {
-    query: root
-  }
-
-  type root {
-    value: String
-  }
-  `;
-  return <Button onClick={() => updateSchema(defaultSchema || emptyModel)}>New model</Button>;
-};
-
-const RevertChanges = ({ updateSchema }: { updateSchema: (schema: string | null) => void }) => {
-  return <Button onClick={() => updateSchema(null)}>Revert my changes</Button>;
-};
-
-const ImportExportDialog = ({
-  updateSchema,
-  dialogShown,
-  saveToSvg,
-  setDialogShown,
-}: {
-  updateSchema: (schema: string) => void;
-  dialogShown: boolean;
-  setDialogShown: (shown: boolean) => void;
-  saveToSvg: () => void;
-}) => {
-  const [schema, setSchema] = React.useState('');
-
-  React.useEffect(() => {
-    const persistedSchema = localStorage.getItem('schema');
-    if (persistedSchema) {
-      setSchema(persistedSchema);
-    }
-  }, []);
-
-  return (
-    <Dialog open={dialogShown} onClose={() => setDialogShown(false)} maxWidth="lg" fullWidth>
-      <DialogTitle>Import / export model</DialogTitle>
-      <DialogContent>
-        <TextareaAutosize
-          value={schema}
-          rowsMax={50}
-          style={{ width: '99%' }}
-          onChange={e => {
-            setSchema(e.currentTarget.value);
-          }}
-        />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={saveToSvg} color="primary">
-          Export as SVG
-        </Button>
-        <div style={{ flex: '1 0 0' }} />
-        <Button onClick={() => setDialogShown(false)} color="primary">
-          Cancel
-        </Button>
-        <Button
-          variant="contained"
-          color="primary"
-          size="small"
-          startIcon={<SaveIcon />}
-          onClick={() => {
-            updateSchema(schema);
-            setDialogShown(false);
-          }}
-        >
-          Save
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-};
-
-const ImportExportButton = ({
-  updateSchema,
-  saveToSvg,
-}: {
-  updateSchema: (schema: string | null) => void;
-  saveToSvg: () => void;
-}) => {
-  const [dialogShown, setDialogShown] = React.useState(false);
-
-  return (
-    <>
-      <Button onClick={() => setDialogShown(true)}>Import / export model</Button>
-      {dialogShown && (
-        <ImportExportDialog
-          updateSchema={updateSchema}
-          dialogShown={dialogShown}
-          setDialogShown={setDialogShown}
-          saveToSvg={saveToSvg}
-        />
-      )}
-    </>
-  );
+  return <Button onClick={createEmptySchema}>New model</Button>;
 };

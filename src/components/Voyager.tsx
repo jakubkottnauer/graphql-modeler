@@ -1,10 +1,9 @@
 import {
-  introspectionQuery,
+  // introspectionQuery,
   buildClientSchema,
   printSchema,
   introspectionFromSchema,
   buildSchema,
-  IntrospectionQuery,
 } from 'graphql/utilities';
 import * as _ from 'lodash';
 import { getSchema, extractTypeId } from '../introspection';
@@ -87,6 +86,8 @@ export default class Voyager extends React.Component<VoyagerProps> {
     displayOptions: defaultDisplayOptions,
     selectedTypeID: null,
     selectedEdgeID: null,
+    // schema currently being worked on -> null defaults to whatever is passed from
+    selectedSchema: null,
   };
 
   svgRenderer: SVGRender;
@@ -100,12 +101,31 @@ export default class Voyager extends React.Component<VoyagerProps> {
 
   componentDidMount() {
     const persistedSchema = localStorage.getItem('schema');
-    let introspection: IntrospectionQuery | null = null;
     if (persistedSchema) {
-      introspection = introspectionFromSchema(buildSchema(persistedSchema));
+      // TODO: migration code, remove later
+      const schemaName = 'model1';
+      const schemas = [newSchema(schemaName, persistedSchema)];
+      localStorage.setItem('schemas', JSON.stringify(schemas));
+      localStorage.setItem('selectedSchema', schemaName);
+      localStorage.removeItem('schema');
     }
 
-    this.fetchIntrospection({ data: introspection });
+    const selectedSchema = localStorage.getItem('selectedSchema');
+    this.switchToSchema(selectedSchema);
+    const persistedSchemas = localStorage.getItem('schemas');
+
+    if (persistedSchemas) {
+      const parsedSchemas = JSON.parse(persistedSchemas);
+      if (selectedSchema) {
+        const selected = parsedSchemas.find(s => s.name === selectedSchema);
+        if (selected) {
+          const introspection = introspectionFromSchema(buildSchema(selected.schema));
+          this.fetchIntrospection({ data: introspection });
+          return;
+        }
+      }
+    }
+    this.fetchIntrospection();
   }
 
   fetchIntrospection(introspection = { data: null }) {
@@ -120,29 +140,6 @@ export default class Voyager extends React.Component<VoyagerProps> {
       this.updateIntrospection(this.props.introspection, displayOptions);
       return;
     }
-
-    let promise = this.props.introspection(introspectionQuery);
-
-    if (!isPromise(promise)) {
-      throw new Error('SchemaProvider did not return a Promise for introspection.');
-    }
-
-    this.setState({
-      introspectionData: null,
-      schema: null,
-      typeGraph: null,
-      displayOptions: null,
-      selectedTypeID: null,
-      selectedEdgeID: null,
-    });
-
-    this.introspectionPromise = promise;
-    promise.then(introspectionData => {
-      if (promise === this.introspectionPromise) {
-        this.introspectionPromise = null;
-        this.updateIntrospection(introspectionData, displayOptions);
-      }
-    });
   }
 
   updateIntrospection(introspectionData, displayOptions) {
@@ -154,12 +151,6 @@ export default class Voyager extends React.Component<VoyagerProps> {
     );
     const typeGraph = getTypeGraph(schema, displayOptions.rootType, displayOptions.hideRoot);
 
-    if (introspectionData) {
-      const graphqlSchemaObj = buildClientSchema(introspectionData.data);
-      const sdlString = printSchema(graphqlSchemaObj);
-      localStorage.setItem('schema', sdlString);
-    }
-
     this.setState({
       introspectionData,
       schema,
@@ -168,7 +159,7 @@ export default class Voyager extends React.Component<VoyagerProps> {
     });
   }
 
-  componentDidUpdate(prevProps: VoyagerProps) {
+  componentDidUpdate(prevProps: VoyagerProps, prevState) {
     if (this.props.introspection !== prevProps.introspection) {
       this.fetchIntrospection();
     } else if (this.props.displayOptions !== prevProps.displayOptions) {
@@ -180,6 +171,50 @@ export default class Voyager extends React.Component<VoyagerProps> {
 
     if (this.props.hideDocs !== prevProps.hideDocs) {
       this.viewportRef.current.resize();
+    }
+
+    const { selectedSchema } = this.state;
+
+    if (this.state.typeGraph !== prevState.typeGraph && prevState.typeGraph) {
+      // update persisted typegraph for currently selected schema
+      const graphqlSchemaObj = buildClientSchema(this.state.introspectionData.data);
+      const sdlString = printSchema(graphqlSchemaObj);
+      const schemas = JSON.parse(localStorage.getItem('schemas')) || [];
+      if (selectedSchema) {
+        const idx = schemas.findIndex(s => s.name === selectedSchema);
+        if (idx > -1) {
+          schemas[idx].schema = sdlString;
+        } else {
+          schemas.push(newSchema(selectedSchema, sdlString));
+        }
+      }
+
+      localStorage.setItem('schemas', JSON.stringify(schemas));
+    }
+
+    if (selectedSchema !== prevState.selectedSchema) {
+      // updated selectedSchema -> rerender
+      if (selectedSchema) {
+        localStorage.setItem('selectedSchema', selectedSchema);
+      } else {
+        localStorage.removeItem('selectedSchema');
+      }
+
+      const persistedSchemas = localStorage.getItem('schemas');
+
+      if (persistedSchemas) {
+        const parsedSchemas = JSON.parse(persistedSchemas);
+        if (selectedSchema) {
+          const selected = parsedSchemas.find(s => s.name === selectedSchema);
+          if (selected) {
+            const introspection = introspectionFromSchema(buildSchema(selected.schema));
+            this.fetchIntrospection({ data: introspection });
+            return;
+          }
+        }
+      }
+      this.fetchIntrospection();
+      return;
     }
   }
 
@@ -225,7 +260,8 @@ export default class Voyager extends React.Component<VoyagerProps> {
                 FileSaver.saveAs(new Blob([data], { type: 'image/svg+xml' }), 'model.svg');
               });
             }}
-            defaultSchema={this.props.defaultSchema}
+            selectedSchema={this.state.selectedSchema}
+            createEmptySchema={this.createEmptySchema}
             typeGraph={typeGraph}
             selectedTypeID={selectedTypeID}
             selectedEdgeID={selectedEdgeID}
@@ -235,6 +271,7 @@ export default class Voyager extends React.Component<VoyagerProps> {
             onEditType={this.handleEditType}
             onDeleteType={this.handleDeleteType}
             updateSchema={this.updateSchema}
+            switchToSchema={this.switchToSchema}
             scalars={[...scalars, ...types]}
           />
         </div>
@@ -273,16 +310,43 @@ export default class Voyager extends React.Component<VoyagerProps> {
     );
   }
 
+  switchToSchema = (schemaName: string | null) => {
+    this.setState({ selectedTypeID: null, selectedSchema: schemaName });
+  };
+
+  copyCurrentSchema = () => {
+    const { selectedSchema } = this.state;
+    // // if no schema is currently selected, we're editing the default schema -> create a copy
+    const newName = (selectedSchema || 'defaultModel') + '_copy' + +new Date();
+    this.switchToSchema(newName);
+    this.updateIntrospection(this.state.introspectionData, this.state.displayOptions);
+    return newName;
+  };
+
   updateSchema = (schema: string | null) => {
     if (schema) {
       this.updateIntrospection(
         { data: introspectionFromSchema(buildSchema(schema)) },
         this.state.displayOptions,
       );
-    } else {
-      this.fetchIntrospection();
     }
-    this.setState({ selectedTypeID: null });
+  };
+
+  createEmptySchema = () => {
+    const newName = 'model' + +new Date();
+    const emptyModel = `
+      schema {
+        query: root
+      }
+
+      type root {
+        value: String
+      }
+      `;
+    const sdl = this.props.defaultSchema || emptyModel;
+    // if no schema is currently selected, we're editing the default schema -> create a copy
+    this.switchToSchema(newName);
+    this.updateSchema(sdl);
   };
 
   handleDisplayOptionsChange = delta => {
@@ -386,7 +450,7 @@ export default class Voyager extends React.Component<VoyagerProps> {
         },
       ];
     }
-    //@ts-ignore
+    // @ts-ignore
     this.updateIntrospection(data, this.state.displayOptions);
 
     // select the modified type as current type
@@ -395,6 +459,10 @@ export default class Voyager extends React.Component<VoyagerProps> {
 
   handleDeleteType = (typeId: string) => {
     if (!typeId) return;
+
+    if (!this.state.selectedSchema) {
+      this.copyCurrentSchema();
+    }
     const typeName = typeId.split('::')[1];
     const data = { ...this.state.introspectionData };
 
@@ -415,7 +483,7 @@ export default class Voyager extends React.Component<VoyagerProps> {
     replaceTypeWith(data, typeName, scalars[0]);
     // select the modified type as current type
     this.setState({ selectedTypeID: null });
-    //@ts-ignore
+    // @ts-ignore
     this.updateIntrospection(data, this.state.displayOptions);
   };
 
@@ -425,9 +493,9 @@ export default class Voyager extends React.Component<VoyagerProps> {
 }
 
 // Duck-type promise detection.
-function isPromise(value) {
-  return typeof value === 'object' && typeof value.then === 'function';
-}
+// function isPromise(value) {
+//   return typeof value === 'object' && typeof value.then === 'function';
+// }
 
 function createNestedType(typeWrappers: string[], typeName: string, scalars: string[]) {
   let finalType = {
@@ -458,4 +526,12 @@ function replaceTypeWith(data: any, typeToReplace: string, newType: string | nul
       }
     }
   }
+}
+
+function newSchema(schemaName: string, schema: string) {
+  return {
+    name: schemaName,
+    schema,
+    lastEdit: new Date(),
+  };
 }

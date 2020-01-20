@@ -7,7 +7,7 @@
 
 .type-info-popover {
   left: var(--doc-panel-width);
-  top: calc(var(--icons-size) + (var(--spacing-unit) * 2) + 80px);
+  top: calc(var(--icons-size) + (var(--spacing-unit) * 2) + 140px);
   bottom: 75px;
   overflow-y: auto;
 
