@@ -1,6 +1,7 @@
 import * as _ from 'lodash';
 import * as React from 'react';
 import * as classNames from 'classnames';
+
 import Button from '@material-ui/core/Button';
 import AddIcon from '@material-ui/icons/Add';
 import { isMatch } from '../../utils';
@@ -10,6 +11,7 @@ import './TypeList.css';
 import TypeLink from './TypeLink';
 import Description from './Description';
 import FocusTypeButton from './FocusTypeButton';
+import { createNestedType } from '../../utils/editing';
 
 interface TypeListProps {
   typeGraph: any;
@@ -88,11 +90,10 @@ export default class TypeList extends React.Component<TypeListProps> {
   }
 }
 
-const newTypeName = 'NewSetting';
-
 export const AddTypeButton = ({ typeGraph, onEditType }: any) => (
   <Button
     onClick={() => {
+      const newTypeName = 'NewSetting';
       let typeName = newTypeName + counter++;
       while (typeGraph.nodes['TYPE::' + typeName]) {
         typeName = newTypeName + counter++;
@@ -106,3 +107,42 @@ export const AddTypeButton = ({ typeGraph, onEditType }: any) => (
     New setting
   </Button>
 );
+
+export const CloneTypeButton = ({ typeGraph, onEditType, selectedType, scalars }: any) => {
+  console.log(selectedType, createNewType('gg'));
+  return (
+    <Button
+      onClick={() => {
+        const newTypeName = selectedType.name + '_Copy';
+        let typeName = newTypeName + counter++;
+        while (typeGraph.nodes['TYPE::' + typeName]) {
+          typeName = newTypeName + counter++;
+        }
+        const copy = createNewType(typeName);
+        copy.description = selectedType.description;
+        // @ts-ignore
+        copy.fields = Object.values(selectedType.fields).map((x: any) => {
+          const field = {
+            name: null,
+            description: null,
+            args: [],
+            type: {},
+            isDeprecated: false,
+            deprecationReason: null,
+          };
+
+          field.name = x.name;
+          field.description = x.description;
+          field.type = createNestedType(x.typeWrappers, x.type.name, scalars);
+
+          return field;
+        });
+        onEditType(typeName, copy);
+      }}
+      variant="contained"
+      size="small"
+    >
+      Clone
+    </Button>
+  );
+};

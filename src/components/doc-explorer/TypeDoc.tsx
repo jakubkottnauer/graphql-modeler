@@ -34,7 +34,7 @@ import Description from './Description';
 import TypeLink from './TypeLink';
 import WrappedTypeName from './WrappedTypeName';
 import Argument from './Argument';
-import { AddTypeButton } from './TypeList';
+import { AddTypeButton, CloneTypeButton } from './TypeList';
 
 interface TypeDocProps {
   selectedType: any;
@@ -232,31 +232,43 @@ const TypeDoc = ({
   return (
     <>
       {!isEditing && (
-        <div className="button-row">
-          <div className="button">
-            <Button
-              size="small"
-              variant="contained"
-              color="primary"
-              onClick={enableEditing}
-              startIcon={<EditIcon />}
-            >
-              Edit
-            </Button>
+        <>
+          <div className="button-row">
+            <div className="button">
+              <Button
+                size="small"
+                variant="contained"
+                color="primary"
+                onClick={enableEditing}
+                startIcon={<EditIcon />}
+              >
+                Edit
+              </Button>
+            </div>
+            <div className="button">
+              <Button
+                size="small"
+                variant="contained"
+                onClick={() => onDeleteType(usedSelectedType.id)}
+              >
+                Delete
+              </Button>
+            </div>
           </div>
-          <div className="button">
-            <Button
-              size="small"
-              variant="contained"
-              onClick={() => onDeleteType(usedSelectedType.id)}
-            >
-              Delete
-            </Button>
+          <div className="button-row">
+            <div className="button">
+              <CloneTypeButton
+                typeGraph={typeGraph}
+                onEditType={onEditType}
+                selectedType={usedSelectedType}
+                scalars={scalars}
+              />
+            </div>
+            <div className="button">
+              <AddTypeButton typeGraph={typeGraph} onEditType={onEditType} />
+            </div>
           </div>
-          <div className="button">
-            <AddTypeButton typeGraph={typeGraph} onEditType={onEditType} />
-          </div>
-        </div>
+        </>
       )}
 
       {isEditing ? (

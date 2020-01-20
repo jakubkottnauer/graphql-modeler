@@ -22,6 +22,7 @@ import Settings from './settings/Settings';
 
 import './Voyager.css';
 import './viewport.css';
+import { createNestedType } from '../utils/editing';
 
 type IntrospectionProvider = (query: string) => Promise<any>;
 
@@ -372,6 +373,11 @@ export default class Voyager extends React.Component<VoyagerProps> {
 
   handleEditType = (typeId: string, typeData: any) => {
     if (!typeId) return;
+
+    if (!this.state.selectedSchema) {
+      this.copyCurrentSchema();
+    }
+
     const typeName = typeId.split('::')[1];
     const data = _.cloneDeep(this.state.introspectionData);
     const typeIndex = data.data.__schema.types.findIndex(
@@ -496,21 +502,6 @@ export default class Voyager extends React.Component<VoyagerProps> {
 // function isPromise(value) {
 //   return typeof value === 'object' && typeof value.then === 'function';
 // }
-
-function createNestedType(typeWrappers: string[], typeName: string, scalars: string[]) {
-  let finalType = {
-    kind: scalars.includes(typeName) ? 'SCALAR' : 'OBJECT',
-    name: typeName,
-    ofType: null,
-  };
-  if (typeWrappers.includes('NON_NULL')) {
-    finalType = { kind: 'NON_NULL', name: null, ofType: _.cloneDeep(finalType) };
-  }
-  if (typeWrappers.includes('LIST')) {
-    finalType = { kind: 'LIST', name: null, ofType: _.cloneDeep(finalType) };
-  }
-  return finalType;
-}
 
 function replaceTypeWith(data: any, typeToReplace: string, newType: string | null) {
   for (let i = 0; i < data.data.__schema.types.length; i++) {
