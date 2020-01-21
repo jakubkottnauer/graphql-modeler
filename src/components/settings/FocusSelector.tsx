@@ -72,7 +72,9 @@ function getRootSubTypeNames(schema) {
   let { queryType } = schema;
   const names = [];
   for (const field of Object.values<any>(queryType.fields)) {
-    names.push(field.type.name);
+    if (field.type.kind === 'OBJECT') {
+      names.push(field.type.name);
+    }
   }
 
   return _.uniq(names);

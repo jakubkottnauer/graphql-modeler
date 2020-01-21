@@ -8,6 +8,8 @@ import Checkbox from '@material-ui/core/Checkbox';
 import Select from '@material-ui/core/Select';
 import Input from '@material-ui/core/Input';
 import MenuItem from '@material-ui/core/MenuItem';
+import ListItemText from '@material-ui/core/ListItemText';
+
 import DeleteIcon from '@material-ui/icons/Delete';
 import AddIcon from '@material-ui/icons/Add';
 import SaveIcon from '@material-ui/icons/Save';
@@ -34,7 +36,7 @@ import Description from './Description';
 import TypeLink from './TypeLink';
 import WrappedTypeName from './WrappedTypeName';
 import Argument from './Argument';
-import { AddTypeButton, CloneTypeButton } from './TypeList';
+import { AddTypeButton, AddUnionButton, CloneTypeButton } from './TypeList';
 
 interface TypeDocProps {
   selectedType: any;
@@ -67,7 +69,6 @@ const TypeDoc = ({
   const [selectedType, setSelectedType] = React.useState<any | null>(null);
   const selectedItemRef = React.useRef<HTMLElement>();
   const usedSelectedType = isEditing ? selectedType : props.selectedType;
-
   const enableEditing = () => {
     if (isEditing) {
       return;
@@ -96,6 +97,7 @@ const TypeDoc = ({
 
   const onEditEdge = (fieldId, newFieldId, newDescription, newDataType, newTypeWrappers) => {
     const typeCopy = isEditing ? _.cloneDeep(usedSelectedType) : enableEditing();
+    typeCopy;
     if (!typeCopy.fields[fieldId]) {
       typeCopy.fields[fieldId] = _.cloneDeep(typeCopy.fields[Object.keys(typeCopy.fields)[0]]);
       typeCopy.fields[fieldId].originalName = fieldId;
@@ -135,6 +137,23 @@ const TypeDoc = ({
     setSelectedType(typeCopy);
   };
 
+  const onEditUnion = (selectedValues: string[]) => {
+    const typeCopy = _.cloneDeep(usedSelectedType);
+    // we don't care about the field details when editing so most of the data are just stubs
+    typeCopy.possibleTypes = selectedValues.map(value => ({
+      id: 'notimportant',
+      type: {
+        kind: 'OBJECT',
+        name: value,
+        description: 'haha',
+        interfaces: [],
+        fields: {},
+        id: 'TYPE::' + value,
+      },
+    }));
+    setSelectedType(typeCopy);
+  };
+
   const renderTypesDef = () => {
     let typesTitle;
     let types: {
@@ -144,7 +163,7 @@ const TypeDoc = ({
 
     switch (usedSelectedType.kind) {
       case 'UNION':
-        typesTitle = 'possible types';
+        typesTitle = 'possible settings';
         types = usedSelectedType.possibleTypes;
         break;
       case 'INTERFACE':
@@ -161,27 +180,36 @@ const TypeDoc = ({
 
     types = types.filter(({ type }) => typeGraph.nodes[type.id] && isMatch(type.name, filter));
 
-    if (types.length === 0) return null;
+    if (types.length === 0 && !isEditing) return null;
 
     return (
       <div className={classNames('doc-category', isEditing && 'editing')}>
         <div className="title">{typesTitle}</div>
-        {_.map(types, type => {
-          let props: any = {
-            key: type.id,
-            className: classNames('item', {
-              '-selected': type.id === selectedEdgeID,
-            }),
-            onClick: () => onSelectEdge(type.id),
-          };
-          if (type.id === selectedEdgeID) props.ref = selectedItemRef;
-          return (
-            <div {...props}>
-              <TypeLink type={type.type} onClick={onTypeLink} filter={filter} />
-              <Description text={type.type.description} className="-linked-type" />
-            </div>
-          );
-        })}
+        {isEditing && usedSelectedType.kind === 'UNION' ? (
+          <UnionEdit
+            types={types}
+            typeGraph={typeGraph}
+            selectedType={usedSelectedType}
+            onChange={onEditUnion}
+          />
+        ) : (
+          _.map(types, type => {
+            let props: any = {
+              key: type.id,
+              className: classNames('item', {
+                '-selected': type.id === selectedEdgeID,
+              }),
+              onClick: () => onSelectEdge(type.id),
+            };
+            if (type.id === selectedEdgeID) props.ref = selectedItemRef;
+            return (
+              <div {...props}>
+                <TypeLink type={type.type} onClick={onTypeLink} filter={filter} />
+                <Description text={type.type.description} className="-linked-type" />
+              </div>
+            );
+          })
+        )}
       </div>
     );
   };
@@ -260,8 +288,6 @@ const TypeDoc = ({
                 Delete
               </Button>
             </div>
-          </div>
-          <div className="button-row">
             <div className="button">
               <CloneTypeButton
                 typeGraph={typeGraph}
@@ -270,8 +296,13 @@ const TypeDoc = ({
                 scalars={scalars}
               />
             </div>
+          </div>
+          <div className="button-row">
             <div className="button">
               <AddTypeButton typeGraph={typeGraph} onEditType={onEditType} />
+            </div>
+            <div className="button">
+              <AddUnionButton typeGraph={typeGraph} onEditType={onEditType} />
             </div>
           </div>
         </>
@@ -630,3 +661,30 @@ const DraggableListItem = DropTarget(
     }),
   )(ListItemEdit),
 );
+
+const UnionEdit = ({ typeGraph, onChange, types }: any) => {
+  const selectedValues = types.map(t => t.type.name);
+  const possibleValues = Object.values(typeGraph.nodes)
+    .filter((n: any) => n.kind === 'OBJECT')
+    .map((n: any) => n.name);
+
+  return (
+    <div className="item">
+      <Select
+        multiple
+        value={selectedValues}
+        onChange={e => onChange(e.target.value)}
+        input={<Input />}
+        renderValue={(selected: string[]) => selected.join(', ')}
+        style={{ width: '100%' }}
+      >
+        {possibleValues.map(s => (
+          <MenuItem key={s} value={s}>
+            <Checkbox checked={selectedValues.includes(s)} color="primary" />
+            <ListItemText primary={s} />
+          </MenuItem>
+        ))}
+      </Select>
+    </div>
+  );
+};

@@ -10,7 +10,7 @@ import SearchBox from '../utils/SearchBox';
 import ImportExportDialog from './DocExplorer/ImportExportDialog';
 import ManageSchemasDialog from './DocExplorer/ManageSchemasDialog';
 import './DocExplorer.css';
-import { Button } from '@material-ui/core';
+import { Button, Typography } from '@material-ui/core';
 
 type DocExplorerProps = {
   typeGraph: any;
@@ -96,7 +96,9 @@ export default class DocExplorer extends React.Component<DocExplorerProps> {
     const name = currentNav.type ? currentNav.type.name : 'Data Model';
     return (
       <div className="type-doc" key={navStack.length}>
-        <p>Current model: {selectedSchema || 'default model'}</p>
+        <Typography style={{ textAlign: 'center', marginBottom: '30px' }}>
+          Current model: {selectedSchema || 'default model'}
+        </Typography>
         <NewModelButton createEmptySchema={createEmptySchema} />
         <ImportExportDialog
           updateSchema={updateSchema}

@@ -250,7 +250,6 @@ export default class Voyager extends React.Component<VoyagerProps> {
     const types = this.state.typeGraph
       ? Object.values(this.state.typeGraph.nodes).map((x: any) => x.name)
       : [];
-
     return (
       <div className="doc-panel">
         <div className="contents">
@@ -381,80 +380,40 @@ export default class Voyager extends React.Component<VoyagerProps> {
     const typeName = typeId.split('::')[1];
     const data = _.cloneDeep(this.state.introspectionData);
     const typeIndex = data.data.__schema.types.findIndex(
-      t => t.kind === 'OBJECT' && t.name === typeName,
+      t => (t.kind === 'OBJECT' || t.kind === 'UNION') && t.name === typeName,
     );
     const scalars = this.state.introspectionData
       ? this.state.introspectionData.data.__schema.types
           .filter(x => x.kind === 'SCALAR')
           .map(x => x.name)
       : [];
+
     if (typeIndex > -1) {
+      const mutableType = data.data.__schema.types[typeIndex];
+      const isUnion = mutableType.kind === 'UNION';
       // edit existing type
-      data.data.__schema.types[typeIndex].name = typeData.name;
-
-      if (data.data.__schema.queryType.name === typeName) {
-        // root node has been renamed
-        data.data.__schema.queryType.name = typeData.name;
-      }
-
-      // update fields
-      const fieldKeys = Object.keys(typeData.fields);
-      data.data.__schema.types[typeIndex].fields = data.data.__schema.types[typeIndex].fields.map(
-        oldField => {
-          const newField = typeData.fields[oldField.name];
-          if (newField) {
-            //existing field has been renamed
-            const field = _.cloneDeep(oldField);
-            field.name = newField.name;
-            field.description = newField.description;
-            field.type = createNestedType(newField.typeWrappers, newField.type.name, scalars);
-
-            return field;
-          } else {
-            // a field has been deleted
-            return null;
-          }
-        },
-      );
-      // remove deleted fields
-      data.data.__schema.types[typeIndex].fields = data.data.__schema.types[
-        typeIndex
-      ].fields.filter(x => x);
-      // process new fields
-      for (const newFieldKey of fieldKeys) {
-        if (!data.data.__schema.types[typeIndex].fields.find(x => x.name === newFieldKey)) {
-          // a new field has been added -> add it to typegraph
-          const newField = typeData.fields[newFieldKey];
-          const field = _.cloneDeep(data.data.__schema.types[typeIndex].fields[0]);
-          field.name = newField.name;
-          field.description = newField.description;
-          field.type = createNestedType(newField.typeWrappers, newField.type.name, scalars);
-          data.data.__schema.types[typeIndex].fields.push(field);
-        }
-      }
-      // sort fields based on the new order set when editing
-      data.data.__schema.types[typeIndex].fields.sort(
-        (a, b) =>
-          typeData.fields[a.name]?.originalPosition - typeData.fields[b.name]?.originalPosition,
-      );
-      // traverse the graph and change the type's name everywhere
-      replaceTypeWith(data, typeName, typeData.name);
+      mutableType.name = typeData.name;
       // update description
-      data.data.__schema.types[typeIndex].description = typeData.description;
-    } else {
-      // // create a new type
-      data.data.__schema.types = [...data.data.__schema.types, typeData];
+      mutableType.description = typeData.description;
+      if (!isUnion) {
+        if (data.data.__schema.queryType.name === typeName) {
+          // root node has been renamed
+          data.data.__schema.queryType.name = typeData.name;
+        }
 
-      // update Root
-      data.data.__schema.types[0].fields = [
-        ...data.data.__schema.types[0].fields,
-        {
-          name: typeData.name.toLowerCase(),
-          description: null,
-          args: [],
-          type: createNestedType([], typeData.name, scalars),
-        },
-      ];
+        normalizeFields(mutableType, typeData, scalars);
+      } else {
+        normalizePossibleTypes(mutableType, typeData);
+      }
+
+      // traverse the graph and change the type's name everywhere - for both OBJECT and UNION kinds
+      replaceTypeWith(data, typeName, typeData.name);
+    } else {
+      if (typeData.kind === 'OBJECT') {
+        createNewType(data, typeData, scalars);
+      } else if (typeData.kind === 'UNION') {
+        createNewUnion(data, typeData, scalars);
+      }
     }
     // @ts-ignore
     this.updateIntrospection(data, this.state.displayOptions);
@@ -505,15 +464,16 @@ export default class Voyager extends React.Component<VoyagerProps> {
 
 function replaceTypeWith(data: any, typeToReplace: string, newType: string | null) {
   for (let i = 0; i < data.data.__schema.types.length; i++) {
-    if (!data.data.__schema.types[i].fields) {
+    const mutableType = data.data.__schema.types[i];
+    if (!mutableType.fields) {
       continue;
     }
-    for (let j = 0; j < data.data.__schema.types[i].fields.length; j++) {
-      if (data.data.__schema.types[i].fields[j].type.name == typeToReplace) {
-        data.data.__schema.types[i].fields[j].type.name = newType;
+    for (let j = 0; j < mutableType.fields.length; j++) {
+      if (mutableType.fields[j].type.name == typeToReplace) {
+        mutableType.fields[j].type.name = newType;
       }
-      if (data.data.__schema.types[i].fields[j].type?.ofType?.name == typeToReplace) {
-        data.data.__schema.types[i].fields[j].type.ofType.name = newType;
+      if (mutableType.fields[j].type?.ofType?.name == typeToReplace) {
+        mutableType.fields[j].type.ofType.name = newType;
       }
     }
   }
@@ -525,4 +485,84 @@ function newSchema(schemaName: string, schema: string) {
     schema,
     lastEdit: new Date(),
   };
+}
+
+function copyField(templateField, copiedField, scalars) {
+  const field = _.cloneDeep(templateField);
+  field.name = copiedField.name;
+  field.description = copiedField.description;
+  field.type = createNestedType(copiedField.typeWrappers, copiedField.type.name, scalars);
+  return field;
+}
+
+function normalizeFields(mutableType, newTypeData, scalars) {
+  // update fields - mutates the first argument!
+  const fieldKeys = Object.keys(newTypeData.fields);
+  mutableType.fields = mutableType.fields
+    .map(oldField => {
+      const newField = newTypeData.fields[oldField.name];
+      if (newField) {
+        // existing field has been renamed
+        return copyField(oldField, newField, scalars);
+      }
+      // a field has been deleted
+      return null;
+    })
+    .filter(x => x);
+
+  // process new fields
+  for (const newFieldKey of fieldKeys) {
+    if (!mutableType.fields.find(x => x.name === newFieldKey)) {
+      // a new field has been added -> add it to typegraph
+      const newField = newTypeData.fields[newFieldKey];
+      const field = copyField(mutableType.fields[0], newField, scalars);
+
+      mutableType.fields.push(field);
+    }
+  }
+  // sort fields based on the new order set when editing
+  mutableType.fields.sort(
+    (a, b) =>
+      newTypeData.fields[a.name]?.originalPosition - newTypeData.fields[b.name]?.originalPosition,
+  );
+}
+
+function normalizePossibleTypes(mutableType, newTypeData) {
+  // update fields - mutates the first argument!
+  mutableType.possibleTypes = newTypeData.possibleTypes.map(t => ({
+    kind: 'OBJECT',
+    name: t.type.name,
+    ofType: null,
+  }));
+}
+
+function createNewType(data, typeData, scalars) {
+  // mutates the first argument!
+  // create a new type
+  data.data.__schema.types = [...data.data.__schema.types, typeData];
+
+  // update Root
+  data.data.__schema.types[0].fields = [
+    ...data.data.__schema.types[0].fields,
+    {
+      name: typeData.name.toLowerCase(),
+      description: null,
+      args: [],
+      type: createNestedType([], typeData.name, scalars),
+    },
+  ];
+}
+
+function createNewUnion(data, typeData, scalars) {
+  // mutates the first argument!
+  data.data.__schema.types = [...data.data.__schema.types, typeData];
+  data.data.__schema.types[0].fields = [
+    ...data.data.__schema.types[0].fields,
+    {
+      name: typeData.name.toLowerCase(),
+      description: null,
+      args: [],
+      type: createNestedType([], typeData.name, scalars),
+    },
+  ];
 }

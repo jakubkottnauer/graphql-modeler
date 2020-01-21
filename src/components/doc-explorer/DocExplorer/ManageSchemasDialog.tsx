@@ -45,7 +45,7 @@ const ManageSchemasDialog = ({
             <FormControlLabel
               key={s}
               value={s}
-              control={<Radio />}
+              control={<Radio color="primary" />}
               label={s === DEFAULT_MODEL ? 'default model' : s}
             />
           ))}

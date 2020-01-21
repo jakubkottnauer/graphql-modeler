@@ -45,6 +45,16 @@ const createNewType = (id: string) => ({
   possibleTypes: null,
 });
 
+const createNewUnion = (id: string) => ({
+  kind: 'UNION',
+  name: id,
+  description: null,
+  fields: {},
+  inputFields: null,
+  interfaces: [],
+  possibleTypes: [],
+});
+
 let counter = 1;
 
 export default class TypeList extends React.Component<TypeListProps> {
@@ -68,6 +78,14 @@ export default class TypeList extends React.Component<TypeListProps> {
           }}
         >
           <AddTypeButton typeGraph={typeGraph} onEditType={this.props.onEditType} />
+        </div>
+        <div
+          className="button"
+          style={{
+            marginBottom: '10px',
+          }}
+        >
+          <AddUnionButton typeGraph={typeGraph} onEditType={this.props.onEditType} />
         </div>
         {rootType && renderItem(rootType, '-root')}
         {_.map(types, type => renderItem(type, ''))}
@@ -108,6 +126,28 @@ export const AddTypeButton = ({ typeGraph, onEditType }: any) => (
   </Button>
 );
 
+export const AddUnionButton = ({ typeGraph, onEditType }: any) => (
+  <Button
+    onClick={() => {
+      const newTypeName = 'NewUnion';
+      let typeName = newTypeName + counter++;
+      while (typeGraph.nodes['TYPE::' + typeName]) {
+        typeName = newTypeName + counter++;
+      }
+      const union = createNewUnion(typeName);
+      // find any of existing objects because we need a default
+      const firstObject: any = Object.values(typeGraph.nodes).find((n: any) => n.kind === 'OBJECT');
+      union.possibleTypes = [{ kind: 'OBJECT', name: firstObject.name, ofType: null }];
+      onEditType(typeName, union);
+    }}
+    variant="contained"
+    startIcon={<AddIcon />}
+    size="small"
+  >
+    New union
+  </Button>
+);
+
 export const CloneTypeButton = ({ typeGraph, onEditType, selectedType, scalars }: any) => {
   return (
     <Button
@@ -117,26 +157,40 @@ export const CloneTypeButton = ({ typeGraph, onEditType, selectedType, scalars }
         while (typeGraph.nodes['TYPE::' + typeName]) {
           typeName = newTypeName + counter++;
         }
-        const copy = createNewType(typeName);
-        copy.description = selectedType.description;
-        // @ts-ignore
-        copy.fields = Object.values(selectedType.fields).map((x: any) => {
-          const field = {
-            name: null,
-            description: null,
-            args: [],
-            type: {},
-            isDeprecated: false,
-            deprecationReason: null,
-          };
+        if (selectedType.kind === 'OBJECT') {
+          const copy = createNewType(typeName);
+          copy.description = selectedType.description;
+          // @ts-ignore
+          copy.fields = Object.values(selectedType.fields).map((x: any) => {
+            const field = {
+              name: null,
+              description: null,
+              args: [],
+              type: {},
+              isDeprecated: false,
+              deprecationReason: null,
+            };
 
-          field.name = x.name;
-          field.description = x.description;
-          field.type = createNestedType(x.typeWrappers, x.type.name, scalars);
+            field.name = x.name;
+            field.description = x.description;
+            field.type = createNestedType(x.typeWrappers, x.type.name, scalars);
 
-          return field;
-        });
-        onEditType(typeName, copy);
+            return field;
+          });
+          onEditType(typeName, copy);
+        } else if (selectedType.kind === 'UNION') {
+          const copy = createNewUnion(typeName);
+          copy.description = selectedType.description;
+          // @ts-ignore
+
+          copy.possibleTypes = selectedType.possibleTypes.map(p => ({
+            kind: p.type.kind,
+            name: p.type.name,
+            ofType: null,
+          }));
+
+          onEditType(typeName, copy);
+        }
       }}
       variant="contained"
       size="small"

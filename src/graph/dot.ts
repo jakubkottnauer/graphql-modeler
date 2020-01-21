@@ -197,7 +197,7 @@ function possibleTypes(node) {
   }
   return `
     <TR>
-      <TD>possible types</TD>
+      <TD>possible settings</TD>
     </TR>
     ${array(
       possibleTypes,
