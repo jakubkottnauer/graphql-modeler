@@ -1,4 +1,4 @@
-import { stringifyWrappers } from '../introspection/';
+import { stringifyWrappers, FAKE_ROOT_ID } from '../introspection/';
 import * as _ from 'lodash';
 
 // memoize existing edges betweens nodes used in focus modus to avoid duplicate edges
@@ -232,6 +232,7 @@ function derivedTypes(node) {
 
 function objectValues<X>(object: { [key: string]: X }, stringify: (X, node) => string): string {
   return _.values(object)
+    .filter((x: any) => x.name !== FAKE_ROOT_ID)
     .map(stringify)
     .join('\n');
 }

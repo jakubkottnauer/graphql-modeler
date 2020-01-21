@@ -1,6 +1,6 @@
 import * as React from 'react';
 import * as _ from 'lodash';
-import { isNode, getDefaultRoot } from '../../graph';
+import { isNode } from '../../graph';
 
 import Select from '@material-ui/core/Select';
 import MenuItem from '@material-ui/core/MenuItem';
@@ -16,21 +16,21 @@ interface FocusSelectorProps {
 export default class FocusSelector extends React.Component<FocusSelectorProps> {
   render() {
     const { schema, onChange } = this.props;
-    const rootType = this.props.rootType || getDefaultRoot(schema);
 
-    const rootTypeNames = getRootTypeNames(schema);
     const rootSubTypeNames = getRootSubTypeNames(schema);
     const otherTypeNames = Object.keys(schema.types)
       .map(id => schema.types[id])
       .filter(type => isNode(type) && !!type.fields.id)
       .map(type => type.name)
-      .filter(name => rootTypeNames.indexOf(name) === -1 && rootSubTypeNames.indexOf(name) === -1)
+      .filter(name => rootSubTypeNames.indexOf(name) === -1)
       .sort();
+
+    const rootType = this.props.rootType || rootSubTypeNames[0];
     return (
       <>
         <FormLabel>Focus on &nbsp;</FormLabel>
         <Select onChange={handleChange} value={rootType}>
-          {[...rootTypeNames, ...rootSubTypeNames].map(name => (
+          {rootSubTypeNames.map(name => (
             <MenuItem value={name} key={name}>
               <strong>{name}</strong>
             </MenuItem>
@@ -47,25 +47,10 @@ export default class FocusSelector extends React.Component<FocusSelectorProps> {
     function handleChange(event) {
       const newRootType = event.target.value;
       if (newRootType !== rootType) {
-        onChange(newRootType === getDefaultRoot(schema) ? undefined : newRootType);
+        onChange(newRootType === rootSubTypeNames[0] ? undefined : newRootType);
       }
     }
   }
-}
-
-function getRootTypeNames(schema) {
-  let { queryType, mutationType, subscriptionType } = schema;
-  const names = [];
-  if (queryType) {
-    names.push(queryType.name);
-  }
-  if (mutationType) {
-    names.push(mutationType.name);
-  }
-  if (subscriptionType) {
-    names.push(subscriptionType.name);
-  }
-  return names;
 }
 
 function getRootSubTypeNames(schema) {

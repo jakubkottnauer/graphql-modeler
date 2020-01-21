@@ -9,6 +9,8 @@ import {
 import { SimplifiedIntrospection, SimplifiedIntrospectionWithIds, SimplifiedType } from './types';
 import { typeNameToId } from './utils';
 
+export const FAKE_ROOT_ID = 'FAKE_ROOT_INTERNAL___';
+
 function unwrapType(type, wrappers) {
   while (type.kind === 'NON_NULL' || type.kind == 'LIST') {
     wrappers.push(type.kind);
@@ -138,7 +140,7 @@ function markRelayTypes(schema: SimplifiedIntrospectionWithIds): void {
         return;
       }
 
-      const edgesType = connectionType.fields.edges.type
+      const edgesType = connectionType.fields.edges.type;
       if (edgesType.kind !== 'OBJECT' || !edgesType.fields.node) {
         return;
       }
@@ -274,4 +276,51 @@ export function getSchema(
     markDeprecated((<any>simpleSchema) as SimplifiedIntrospectionWithIds);
   }
   return simpleSchema;
+}
+
+export function enrichIntrospection(introspection: any) {
+  const copy = _.cloneDeep(introspection);
+
+  if (introspection.data.__schema.queryType.name === FAKE_ROOT_ID) {
+    const fakeRootIdx = copy.data.__schema.types.findIndex(t => t.name === FAKE_ROOT_ID);
+    copy.data.__schema.types[fakeRootIdx].fields = getAllFields(copy);
+  } else {
+    // change pointer to current root
+    copy.data.__schema.queryType.name = FAKE_ROOT_ID;
+
+    const newRoot = {
+      kind: 'OBJECT',
+      name: FAKE_ROOT_ID,
+      description:
+        'This is a hidden root node pointing to all other types used for various internal purposes. Feel free to ignore it.',
+      inputFields: null,
+      interfaces: [],
+      enumValues: null,
+      possibleTypes: null,
+      fields: getAllFields(copy),
+    };
+
+    copy.data.__schema.types.push(newRoot);
+  }
+  return copy;
+}
+
+function getAllFields(introspection) {
+  return introspection.data.__schema.types
+    .filter(
+      t =>
+        (t.kind === 'OBJECT' || t.kind === 'UNION') &&
+        !t.name.startsWith('__') &&
+        t.name !== FAKE_ROOT_ID,
+    )
+    .map(t => ({
+      name: t.name,
+      description: null,
+      args: [],
+      type: {
+        kind: t.kind,
+        name: t.name,
+        ofType: null,
+      },
+    }));
 }

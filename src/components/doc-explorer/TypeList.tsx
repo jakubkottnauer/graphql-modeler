@@ -12,6 +12,7 @@ import TypeLink from './TypeLink';
 import Description from './Description';
 import FocusTypeButton from './FocusTypeButton';
 import { createNestedType } from '../../utils/editing';
+import { FAKE_ROOT_ID } from '../../introspection';
 
 interface TypeListProps {
   typeGraph: any;
@@ -93,7 +94,7 @@ export default class TypeList extends React.Component<TypeListProps> {
     );
 
     function renderItem(type, className?: string) {
-      if (!isMatch(type.name, filter)) {
+      if (!isMatch(type.name, filter) || type.name === FAKE_ROOT_ID) {
         return null;
       }
 
@@ -136,7 +137,9 @@ export const AddUnionButton = ({ typeGraph, onEditType }: any) => (
       }
       const union = createNewUnion(typeName);
       // find any of existing objects because we need a default
-      const firstObject: any = Object.values(typeGraph.nodes).find((n: any) => n.kind === 'OBJECT');
+      const firstObject: any = Object.values(typeGraph.nodes).find(
+        (n: any) => n.kind === 'OBJECT' && n.name !== FAKE_ROOT_ID,
+      );
       union.possibleTypes = [{ kind: 'OBJECT', name: firstObject.name, ofType: null }];
       onEditType(typeName, union);
     }}

@@ -37,6 +37,7 @@ import TypeLink from './TypeLink';
 import WrappedTypeName from './WrappedTypeName';
 import Argument from './Argument';
 import { AddTypeButton, AddUnionButton, CloneTypeButton } from './TypeList';
+import { FAKE_ROOT_ID } from '../../introspection';
 
 interface TypeDocProps {
   selectedType: any;
@@ -665,7 +666,7 @@ const DraggableListItem = DropTarget(
 const UnionEdit = ({ typeGraph, onChange, types }: any) => {
   const selectedValues = types.map(t => t.type.name);
   const possibleValues = Object.values(typeGraph.nodes)
-    .filter((n: any) => n.kind === 'OBJECT')
+    .filter((n: any) => n.kind === 'OBJECT' && n.name !== FAKE_ROOT_ID)
     .map((n: any) => n.name);
 
   return (

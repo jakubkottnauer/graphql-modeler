@@ -6,7 +6,7 @@ import {
   buildSchema,
 } from 'graphql/utilities';
 import * as _ from 'lodash';
-import { getSchema, extractTypeId } from '../introspection';
+import { getSchema, extractTypeId, enrichIntrospection, FAKE_ROOT_ID } from '../introspection';
 import { SVGRender, getTypeGraph } from '../graph/';
 import { WorkerCallback } from '../utils/types';
 import FileSaver from 'file-saver';
@@ -144,16 +144,17 @@ export default class Voyager extends React.Component<VoyagerProps> {
   }
 
   updateIntrospection(introspectionData, displayOptions) {
+    const enrichedIntrospection = enrichIntrospection(introspectionData);
     const schema = getSchema(
-      introspectionData,
+      enrichedIntrospection,
       displayOptions.sortByAlphabet,
       displayOptions.skipRelay,
       displayOptions.skipDeprecated,
     );
-    const typeGraph = getTypeGraph(schema, displayOptions.rootType, displayOptions.hideRoot);
 
+    const typeGraph = getTypeGraph(schema, displayOptions.rootType, displayOptions.hideRoot);
     this.setState({
-      introspectionData,
+      introspectionData: enrichedIntrospection,
       schema,
       typeGraph,
       displayOptions,
@@ -248,7 +249,9 @@ export default class Voyager extends React.Component<VoyagerProps> {
           .map(x => x.name)
       : [];
     const types = this.state.typeGraph
-      ? Object.values(this.state.typeGraph.nodes).map((x: any) => x.name)
+      ? Object.values(this.state.typeGraph.nodes)
+          .map((x: any) => x.name)
+          .filter(x => x !== FAKE_ROOT_ID)
       : [];
     return (
       <div className="doc-panel">
@@ -432,10 +435,10 @@ export default class Voyager extends React.Component<VoyagerProps> {
     const data = { ...this.state.introspectionData };
 
     const typeIndex = data.data.__schema.types.findIndex(
-      t => t.kind === 'OBJECT' && t.name === typeName,
+      t => (t.kind === 'OBJECT' || t.kind === 'UNION') && t.name === typeName,
     );
 
-    //delete the type itself
+    // delete the type itself
     data.data.__schema.types.splice(typeIndex, 1);
 
     // find dependencies and update them with a scalar
@@ -541,9 +544,10 @@ function createNewType(data, typeData, scalars) {
   // create a new type
   data.data.__schema.types = [...data.data.__schema.types, typeData];
 
-  // update Root
-  data.data.__schema.types[0].fields = [
-    ...data.data.__schema.types[0].fields,
+  // update fake root
+  const fakeRootIds = data.data.__schema.types.findIndex(t => t.name === FAKE_ROOT_ID);
+  data.data.__schema.types[fakeRootIds].fields = [
+    ...data.data.__schema.types[fakeRootIds].fields,
     {
       name: typeData.name.toLowerCase(),
       description: null,
@@ -556,8 +560,9 @@ function createNewType(data, typeData, scalars) {
 function createNewUnion(data, typeData, scalars) {
   // mutates the first argument!
   data.data.__schema.types = [...data.data.__schema.types, typeData];
-  data.data.__schema.types[0].fields = [
-    ...data.data.__schema.types[0].fields,
+  const fakeRootIds = data.data.__schema.types.findIndex(t => t.name === FAKE_ROOT_ID);
+  data.data.__schema.types[fakeRootIds].fields = [
+    ...data.data.__schema.types[fakeRootIds].fields,
     {
       name: typeData.name.toLowerCase(),
       description: null,
