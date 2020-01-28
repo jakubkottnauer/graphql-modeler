@@ -7,8 +7,11 @@ import FormControlLabel from '@material-ui/core/FormControlLabel';
 import Checkbox from '@material-ui/core/Checkbox';
 import Select from '@material-ui/core/Select';
 import Input from '@material-ui/core/Input';
+import TextField from '@material-ui/core/TextField';
 import MenuItem from '@material-ui/core/MenuItem';
 import ListItemText from '@material-ui/core/ListItemText';
+import InputLabel from '@material-ui/core/InputLabel';
+import FormControl from '@material-ui/core/FormControl';
 
 import DeleteIcon from '@material-ui/icons/Delete';
 import AddIcon from '@material-ui/icons/Add';
@@ -312,16 +315,16 @@ const TypeDoc = ({
       {isEditing ? (
         <>
           <div className="type-edit-wrapper">
-            <Input
-              placeholder="Setting name"
-              required
+            <TextField
+              label="Setting name"
+              error={!usedSelectedType.name?.length}
               value={usedSelectedType.name}
               onChange={e => setSelectedType({ ...selectedType, name: e.currentTarget.value })}
             />
           </div>
           <div className="type-edit-wrapper">
-            <Input
-              placeholder="Setting description"
+            <TextField
+              label="Setting description"
               value={usedSelectedType.description}
               onChange={e =>
                 setSelectedType({ ...selectedType, description: e.currentTarget.value })
@@ -381,68 +384,38 @@ const EditButtons = ({
   </div>
 );
 
-const ListItem = React.forwardRef<HTMLDivElement, any>(
-  (
-    {
-      filter,
-      selectedId,
-      onTypeLink,
-      onEditEdge,
-      field,
-      key,
-      className,
-      scalars,
-      isEditing,
-      enableEditing,
-      onDeleteEdge,
-      ...props
-    }: any,
-    ref,
-  ) => {
-    const elementRef = React.useRef(null);
-    if (props.connectDragSource) {
-      props.connectDragSource(elementRef);
-      props.connectDropTarget(elementRef);
-    }
-    React.useImperativeHandle<{}, any>(ref, () => ({
-      getNode: () => elementRef.current,
-    }));
-    const opacity = props.isDragging ? 0 : 1;
-
-    return (
-      <div key={key} className={className} ref={elementRef} style={{ opacity, display: 'flex' }}>
-        <div style={{ width: '250px' }}>
-          <a className="field-name">{highlightTerm(field.name, filter)}</a>
-          <span
-            className={classNames('args-wrap', {
-              '-empty': _.isEmpty(field.args),
-            })}
-          >
-            {!_.isEmpty(field.args) && (
-              <span key="args" className="args">
-                {_.map(field.args, arg => (
-                  <Argument
-                    key={arg.name}
-                    arg={arg}
-                    expanded={field.id === selectedId}
-                    onTypeLink={onTypeLink}
-                  />
-                ))}
-              </span>
-            )}
+const ListItem = ({ filter, selectedId, onTypeLink, field, key, className, onDeleteEdge }: any) => (
+  <div key={key} className={className} style={{ display: 'flex' }}>
+    <div style={{ width: '250px' }}>
+      <a className="field-name">{highlightTerm(field.name, filter)}</a>
+      <span
+        className={classNames('args-wrap', {
+          '-empty': _.isEmpty(field.args),
+        })}
+      >
+        {!_.isEmpty(field.args) && (
+          <span key="args" className="args">
+            {_.map(field.args, arg => (
+              <Argument
+                key={arg.name}
+                arg={arg}
+                expanded={field.id === selectedId}
+                onTypeLink={onTypeLink}
+              />
+            ))}
           </span>
-          <WrappedTypeName container={field} onTypeLink={onTypeLink} />
-          {field.isDeprecated && <span className="doc-alert-text"> DEPRECATED</span>}
-          <Markdown text={field.description} className="description-box -field" />
-        </div>
-        <div className="edit-field-icon-column">
-          <IconButton onClick={() => onDeleteEdge(field.name)}>
-            <DeleteIcon />
-          </IconButton>
-        </div>
-      </div>
-    );
-  },
+        )}
+      </span>
+      <WrappedTypeName container={field} onTypeLink={onTypeLink} />
+      {field.isDeprecated && <span className="doc-alert-text"> DEPRECATED</span>}
+      <Markdown text={field.description} className="description-box -field" />
+    </div>
+    <div className="edit-field-icon-column">
+      <IconButton onClick={() => onDeleteEdge(field.name)}>
+        <DeleteIcon />
+      </IconButton>
+    </div>
+  </div>
 );
 
 const ListItemEdit = React.forwardRef<HTMLDivElement, any>(
@@ -464,6 +437,7 @@ const ListItemEdit = React.forwardRef<HTMLDivElement, any>(
     ref,
   ) => {
     const elementRef = React.useRef(null);
+    const handleRef = React.useRef(null);
     const nameInputRef = React.useRef(null);
     React.useEffect(() => {
       if (isLast && nameInputRef.current && editCausedByNewAttribute) {
@@ -472,7 +446,8 @@ const ListItemEdit = React.forwardRef<HTMLDivElement, any>(
     }, [nameInputRef]);
 
     if (props.connectDragSource) {
-      props.connectDragSource(elementRef);
+      props.connectDragPreview(elementRef);
+      props.connectDragSource(handleRef);
       props.connectDropTarget(elementRef);
     }
     React.useImperativeHandle<{}, any>(ref, () => ({
@@ -496,38 +471,43 @@ const ListItemEdit = React.forwardRef<HTMLDivElement, any>(
       );
 
     return (
-      <div key={key} className={className} ref={elementRef} style={{ opacity, display: 'flex' }}>
-        <div className="edit-field-icon-column">
-          <span title="Drag to reorder fields" style={{ cursor: 'move' }}>
-            <DragIndicatorIcon />
-          </span>
+      <div key={key} ref={elementRef} className={className} style={{ opacity, display: 'flex' }}>
+        <div
+          ref={handleRef}
+          className="edit-field-icon-column edit-field-drag"
+          title="Drag to reorder attributes"
+        >
+          <DragIndicatorIcon />
         </div>
         <div>
-          <Input
+          <TextField
             value={field.name}
             onChange={e => onEditName(e.currentTarget.value)}
-            placeholder="Field name"
-            required
-            style={{ width: '60%' }}
+            label="Attribute name"
+            error={!field.name?.length}
+            style={{ width: '55%' }}
             inputRef={nameInputRef}
           />
-          <Select
-            value={field.type.name}
-            required
-            onChange={e => onEditType(e.target.value as string)}
-            style={{ width: '35%', marginLeft: '5px' }}
-          >
-            {scalars.map(s => (
-              <MenuItem value={s} key={s}>
-                {s}
-              </MenuItem>
-            ))}
-          </Select>
-          <Input
+          <FormControl style={{ width: '42%', marginLeft: '2px' }}>
+            <InputLabel shrink>Type</InputLabel>
+            <Select
+              value={field.type.name}
+              required
+              onChange={e => onEditType(e.target.value as string)}
+            >
+              {scalars.map(s => (
+                <MenuItem value={s} key={s}>
+                  {s}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <TextField
             value={field.description}
             onChange={e => onEditDescription(e.currentTarget.value)}
             style={{ width: '100%' }}
-            placeholder="Description"
+            label="Description"
           />
           <div>
             <FormControlLabel
@@ -658,6 +638,7 @@ const DraggableListItem = DropTarget(
     },
     (connect: DragSourceConnector, monitor: DragSourceMonitor) => ({
       connectDragSource: connect.dragSource(),
+      connectDragPreview: connect.dragPreview(),
       isDragging: monitor.isDragging(),
     }),
   )(ListItemEdit),

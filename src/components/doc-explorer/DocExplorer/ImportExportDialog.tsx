@@ -68,9 +68,7 @@ const ImportExportDialog = ({
             value={schema}
             rowsMax={50}
             style={{ width: '99%' }}
-            onChange={e => {
-              setSchema(e.currentTarget.value);
-            }}
+            onChange={e => setSchema(e.currentTarget.value)}
           />
         )}
       </DialogContent>

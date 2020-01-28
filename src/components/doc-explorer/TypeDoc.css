@@ -19,6 +19,15 @@
   width: 30px;
   align-items: center;
   display: flex;
+  &.edit-field-drag {
+    cursor: move;
+    border-left: 2px solid transparent;
+    width: 45px;
+    margin-left: -15px;
+    &:hover {
+      border-left: 2px solid var(--primary-color);
+    }
+  }
 }
 
 .type-edit-wrapper {
