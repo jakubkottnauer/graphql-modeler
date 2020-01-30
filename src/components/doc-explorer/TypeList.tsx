@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 import * as React from 'react';
 import * as classNames from 'classnames';
-
+import { GlobalHotKeys } from 'react-hotkeys';
 import Button from '@material-ui/core/Button';
 import AddIcon from '@material-ui/icons/Add';
 import { isMatch } from '../../utils';
@@ -11,7 +11,7 @@ import './TypeList.css';
 import TypeLink from './TypeLink';
 import Description from './Description';
 import FocusTypeButton from './FocusTypeButton';
-import { createNestedType } from '../../utils/editing';
+import { createNewType, createNewUnion, cloneType } from '../../utils/editing';
 import { FAKE_ROOT_ID } from '../../introspection';
 
 interface TypeListProps {
@@ -21,42 +21,6 @@ interface TypeListProps {
   onTypeLink: (any) => void;
   onEditType: (typeId: string, typeData: any) => void;
 }
-
-const createNewType = (id: string) => ({
-  kind: 'OBJECT',
-  name: id,
-  description: null,
-  fields: [
-    {
-      name: 'id',
-      description: null,
-      args: [],
-      type: {
-        kind: 'NON_NULL',
-        name: null,
-        ofType: { kind: 'SCALAR', name: 'String', ofType: null },
-      },
-      isDeprecated: false,
-      deprecationReason: null,
-    },
-  ],
-  inputFields: null,
-  interfaces: [],
-  enumValues: null,
-  possibleTypes: null,
-});
-
-const createNewUnion = (id: string) => ({
-  kind: 'UNION',
-  name: id,
-  description: null,
-  fields: {},
-  inputFields: null,
-  interfaces: [],
-  possibleTypes: [],
-});
-
-let counter = 1;
 
 export default class TypeList extends React.Component<TypeListProps> {
   render() {
@@ -112,17 +76,18 @@ export default class TypeList extends React.Component<TypeListProps> {
 export const AddTypeButton = ({ typeGraph, onEditType }: any) => (
   <Button
     onClick={() => {
-      const newTypeName = 'NewSetting';
-      let typeName = newTypeName + counter++;
-      while (typeGraph.nodes['TYPE::' + typeName]) {
-        typeName = newTypeName + counter++;
-      }
-      onEditType(typeName, createNewType(typeName));
+      createNewType(typeGraph, onEditType);
     }}
     variant="contained"
     startIcon={<AddIcon />}
     size="small"
   >
+    <GlobalHotKeys
+      keyMap={{ NEW_TYPE: 's' }}
+      handlers={{
+        NEW_TYPE: () => createNewType(typeGraph, onEditType),
+      }}
+    />
     New setting
   </Button>
 );
@@ -130,23 +95,18 @@ export const AddTypeButton = ({ typeGraph, onEditType }: any) => (
 export const AddUnionButton = ({ typeGraph, onEditType }: any) => (
   <Button
     onClick={() => {
-      const newTypeName = 'NewUnion';
-      let typeName = newTypeName + counter++;
-      while (typeGraph.nodes['TYPE::' + typeName]) {
-        typeName = newTypeName + counter++;
-      }
-      const union = createNewUnion(typeName);
-      // find any of existing objects because we need a default
-      const firstObject: any = Object.values(typeGraph.nodes).find(
-        (n: any) => n.kind === 'OBJECT' && n.name !== FAKE_ROOT_ID,
-      );
-      union.possibleTypes = [{ kind: 'OBJECT', name: firstObject.name, ofType: null }];
-      onEditType(typeName, union);
+      createNewUnion(typeGraph, onEditType);
     }}
     variant="contained"
     startIcon={<AddIcon />}
     size="small"
   >
+    <GlobalHotKeys
+      keyMap={{ NEW_UNION: 'u' }}
+      handlers={{
+        NEW_UNION: () => createNewUnion(typeGraph, onEditType),
+      }}
+    />
     New union
   </Button>
 );
@@ -155,49 +115,17 @@ export const CloneTypeButton = ({ typeGraph, onEditType, selectedType, scalars }
   return (
     <Button
       onClick={() => {
-        const newTypeName = selectedType.name + '_Copy';
-        let typeName = newTypeName + counter++;
-        while (typeGraph.nodes['TYPE::' + typeName]) {
-          typeName = newTypeName + counter++;
-        }
-        if (selectedType.kind === 'OBJECT') {
-          const copy = createNewType(typeName);
-          copy.description = selectedType.description;
-          // @ts-ignore
-          copy.fields = Object.values(selectedType.fields).map((x: any) => {
-            const field = {
-              name: null,
-              description: null,
-              args: [],
-              type: {},
-              isDeprecated: false,
-              deprecationReason: null,
-            };
-
-            field.name = x.name;
-            field.description = x.description;
-            field.type = createNestedType(x.typeWrappers, x.type.name, scalars);
-
-            return field;
-          });
-          onEditType(typeName, copy);
-        } else if (selectedType.kind === 'UNION') {
-          const copy = createNewUnion(typeName);
-          copy.description = selectedType.description;
-          // @ts-ignore
-
-          copy.possibleTypes = selectedType.possibleTypes.map(p => ({
-            kind: p.type.kind,
-            name: p.type.name,
-            ofType: null,
-          }));
-
-          onEditType(typeName, copy);
-        }
+        cloneType(typeGraph, onEditType, selectedType, scalars);
       }}
       variant="contained"
       size="small"
     >
+      <GlobalHotKeys
+        keyMap={{ CLONE_TYPE: 'c' }}
+        handlers={{
+          CLONE_TYPE: () => cloneType(typeGraph, onEditType, selectedType, scalars),
+        }}
+      />
       Clone
     </Button>
   );

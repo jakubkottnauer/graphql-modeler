@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
 import * as React from 'react';
+
 import * as classNames from 'classnames';
 import Button from '@material-ui/core/Button';
 import IconButton from '@material-ui/core/IconButton';
@@ -41,6 +42,8 @@ import WrappedTypeName from './WrappedTypeName';
 import Argument from './Argument';
 import { AddTypeButton, AddUnionButton, CloneTypeButton } from './TypeList';
 import { FAKE_ROOT_ID } from '../../introspection';
+import { GlobalHotKeys } from 'react-hotkeys';
+import { createNewAttribute } from '../../utils/editing';
 
 interface TypeDocProps {
   selectedType: any;
@@ -72,7 +75,16 @@ const TypeDoc = ({
   const [isEditing, setIsEditing] = React.useState(false);
   const [selectedType, setSelectedType] = React.useState<any | null>(null);
   const selectedItemRef = React.useRef<HTMLElement>();
+  React.useEffect(() => {
+    if (selectedItemRef.current?.scrollIntoViewIfNeeded) {
+      selectedItemRef.current?.scrollIntoViewIfNeeded();
+    }
+  }, [selectedItemRef.current]);
+
   const usedSelectedType = isEditing ? selectedType : props.selectedType;
+  if (!usedSelectedType) {
+    return null;
+  }
   const enableEditing = () => {
     if (isEditing) {
       return;
@@ -90,18 +102,21 @@ const TypeDoc = ({
 
     setIsEditing(true);
     setSelectedType(type);
-    return type;
   };
 
-  React.useEffect(() => {
-    if (selectedItemRef.current?.scrollIntoViewIfNeeded) {
-      selectedItemRef.current?.scrollIntoViewIfNeeded();
-    }
-  }, [selectedItemRef.current]);
-
   const onEditEdge = (fieldId, newFieldId, newDescription, newDataType, newTypeWrappers) => {
-    const typeCopy = isEditing ? _.cloneDeep(usedSelectedType) : enableEditing();
-    typeCopy;
+    let typeCopy = _.cloneDeep(usedSelectedType);
+
+    if (!isEditing) {
+      typeCopy.fields = Object.values(typeCopy.fields).reduce(
+        (acc: any, f: any, idx) => ({
+          ...acc,
+          [f.name]: { ...f, originalName: f.name, originalPosition: idx },
+        }),
+        {},
+      );
+    }
+
     if (!typeCopy.fields[fieldId]) {
       typeCopy.fields[fieldId] = _.cloneDeep(typeCopy.fields[Object.keys(typeCopy.fields)[0]]);
       typeCopy.fields[fieldId].originalName = fieldId;
@@ -112,6 +127,7 @@ const TypeDoc = ({
     typeCopy.fields[fieldId].type = { ...typeCopy.fields[fieldId].type };
     typeCopy.fields[fieldId].type.name = newDataType;
     typeCopy.fields[fieldId].typeWrappers = newTypeWrappers;
+    setIsEditing(true);
     setSelectedType(typeCopy);
   };
 
@@ -131,13 +147,14 @@ const TypeDoc = ({
   };
 
   const onDeleteEdge = fieldId => {
-    const typeCopy = isEditing ? _.cloneDeep(usedSelectedType) : enableEditing();
+    const typeCopy = _.cloneDeep(usedSelectedType);
     if (Object.keys(typeCopy.fields).length === 1) {
       // deleting last field -> delete type
       onDeleteType(typeCopy.id);
       return;
     }
     delete typeCopy.fields[fieldId];
+    setIsEditing(true);
     setSelectedType(typeCopy);
   };
 
@@ -272,6 +289,13 @@ const TypeDoc = ({
       {!isEditing && (
         <>
           <div className="button-row">
+            <GlobalHotKeys
+              keyMap={{ DELETE: 'd', EDIT: 'e' }}
+              handlers={{
+                DELETE: () => onDeleteType(usedSelectedType.id),
+                EDIT: enableEditing,
+              }}
+            />
             <div className="button">
               <Button
                 size="small"
@@ -336,7 +360,6 @@ const TypeDoc = ({
         <Description className="-doc-type" text={usedSelectedType.description} />
       )}
       {renderTypesDef()}
-
       <DndProvider backend={Backend}>{renderFields()}</DndProvider>
       {isEditing && (
         <EditButtons
@@ -542,33 +565,38 @@ const ListItemEdit = React.forwardRef<HTMLDivElement, any>(
   },
 );
 
-let counter = 1;
-
-const AddNewButton = ({ selectedType, onEditEdge, scalars }: any) => (
-  <div className="button">
-    <Button
-      startIcon={<AddIcon />}
-      style={{
-        marginBottom: '10px',
-      }}
-      size="small"
-      variant="contained"
-      onClick={() => {
-        let id = 'attribute' + counter++;
-        while (selectedType && selectedType.fields[id]) {
-          id = 'attribute' + counter++;
-        }
-        editCausedByNewAttribute = true;
-        setTimeout(() => {
-          editCausedByNewAttribute = false;
-        }, 100);
-        onEditEdge(id, id, id + ' description', scalars[0], []);
-      }}
-    >
-      New attribute
-    </Button>
-  </div>
-);
+const AddNewButton = ({ selectedType, onEditEdge, scalars }: any) => {
+  const handler = () => {
+    createNewAttribute(selectedType, onEditEdge, scalars, () => {
+      editCausedByNewAttribute = true;
+      setTimeout(() => {
+        editCausedByNewAttribute = false;
+      }, 100);
+    });
+  };
+  return (
+    <div className="button">
+      <GlobalHotKeys
+        allowChanges
+        keyMap={{ NEW_FIELD: 'a' }}
+        handlers={{
+          NEW_FIELD: handler,
+        }}
+      />
+      <Button
+        startIcon={<AddIcon />}
+        style={{
+          marginBottom: '10px',
+        }}
+        size="small"
+        variant="contained"
+        onClick={handler}
+      >
+        New attribute
+      </Button>
+    </div>
+  );
+};
 
 const Item = 'item';
 const DraggableListItem = DropTarget(
