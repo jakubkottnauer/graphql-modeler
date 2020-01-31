@@ -119,12 +119,11 @@ export function cloneType(typeGraph, onEditType, selectedType, scalars) {
   }
 }
 
-export function createNewAttribute(selectedType, onEditEdge, scalars, callback) {
+export function createNewAttribute(selectedType, onEditEdge, scalars) {
   let counter = 1;
   let id = 'attribute' + counter++;
   while (selectedType && selectedType.fields[id]) {
     id = 'attribute' + counter++;
   }
   onEditEdge(id, id, id + ' description', scalars[0], []);
-  callback();
 }

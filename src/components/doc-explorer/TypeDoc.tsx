@@ -31,6 +31,7 @@ import {
   DragSourceMonitor,
 } from 'react-dnd';
 import Backend from 'react-dnd-html5-backend';
+import { GlobalHotKeys } from 'react-hotkeys';
 
 import { SimplifiedTypeWithIDs } from '../../introspection/types';
 import { isMatch, highlightTerm } from '../../utils';
@@ -42,7 +43,6 @@ import WrappedTypeName from './WrappedTypeName';
 import Argument from './Argument';
 import { AddTypeButton, AddUnionButton, CloneTypeButton } from './TypeList';
 import { FAKE_ROOT_ID } from '../../introspection';
-import { GlobalHotKeys } from 'react-hotkeys';
 import { createNewAttribute } from '../../utils/editing';
 
 interface TypeDocProps {
@@ -116,7 +116,6 @@ const TypeDoc = ({
         {},
       );
     }
-
     if (!typeCopy.fields[fieldId]) {
       typeCopy.fields[fieldId] = _.cloneDeep(typeCopy.fields[Object.keys(typeCopy.fields)[0]]);
       typeCopy.fields[fieldId].originalName = fieldId;
@@ -139,10 +138,10 @@ const TypeDoc = ({
     const hover: any = Object.values(typeCopy.fields).find(
       (f: any) => f.originalPosition === hoverIdx,
     );
-
-    const tmp = typeCopy.fields[drag.name].originalPosition;
-    typeCopy.fields[drag.name].originalPosition = typeCopy.fields[hover.name].originalPosition;
-    typeCopy.fields[hover.name].originalPosition = tmp;
+    const tmp = typeCopy.fields[drag.originalName].originalPosition;
+    typeCopy.fields[drag.originalName].originalPosition =
+      typeCopy.fields[hover.originalName].originalPosition;
+    typeCopy.fields[hover.originalName].originalPosition = tmp;
     setSelectedType(typeCopy);
   };
 
@@ -280,6 +279,9 @@ const TypeDoc = ({
             />
           );
         })}
+        <div style={{ marginTop: 5 }}>
+          <AddNewButton selectedType={usedSelectedType} onEditEdge={onEditEdge} scalars={scalars} />
+        </div>
       </div>
     );
   };
@@ -382,30 +384,43 @@ const EditButtons = ({
   setIsEditing,
   setSelectedType,
   onEditType,
-}: any) => (
-  <div className="button-row">
-    <div className="button">
-      <Button
-        variant="contained"
-        size="small"
-        onClick={() => {
-          onEditType(selectedTypeId, selectedType);
-          setIsEditing(false);
-          setSelectedType(null);
-        }}
-        color="primary"
-        startIcon={<SaveIcon />}
-      >
-        Save
-      </Button>
+}: any) => {
+  const cancel = () => setIsEditing(false);
+
+  const save = () => {
+    onEditType(selectedTypeId, selectedType);
+    setIsEditing(false);
+    setSelectedType(null);
+  };
+  return (
+    <div className="button-row">
+      <div className="button">
+        <GlobalHotKeys
+          allowChanges
+          keyMap={{ SAVE: 'enter', CANCEL: 'esc' }}
+          handlers={{
+            SAVE: save,
+            CANCEL: cancel,
+          }}
+        />
+        <Button
+          variant="contained"
+          size="small"
+          onClick={save}
+          color="primary"
+          startIcon={<SaveIcon />}
+        >
+          Save
+        </Button>
+      </div>
+      <div className="button">
+        <Button color="primary" size="small" onClick={cancel}>
+          Cancel
+        </Button>
+      </div>
     </div>
-    <div className="button">
-      <Button color="primary" size="small" onClick={() => setIsEditing(false)}>
-        Cancel
-      </Button>
-    </div>
-  </div>
-);
+  );
+};
 
 const ListItem = ({ filter, selectedId, onTypeLink, field, key, className, onDeleteEdge }: any) => (
   <div key={key} className={className} style={{ display: 'flex' }}>
@@ -567,12 +582,11 @@ const ListItemEdit = React.forwardRef<HTMLDivElement, any>(
 
 const AddNewButton = ({ selectedType, onEditEdge, scalars }: any) => {
   const handler = () => {
-    createNewAttribute(selectedType, onEditEdge, scalars, () => {
-      editCausedByNewAttribute = true;
-      setTimeout(() => {
-        editCausedByNewAttribute = false;
-      }, 100);
-    });
+    editCausedByNewAttribute = true;
+    createNewAttribute(selectedType, onEditEdge, scalars);
+    setTimeout(() => {
+      editCausedByNewAttribute = false;
+    }, 200);
   };
   return (
     <div className="button">

@@ -1,15 +1,15 @@
 import {
-  // introspectionQuery,
   buildClientSchema,
   printSchema,
   introspectionFromSchema,
   buildSchema,
 } from 'graphql/utilities';
 import * as _ from 'lodash';
+import { configure } from 'react-hotkeys';
+import FileSaver from 'file-saver';
 import { getSchema, extractTypeId, enrichIntrospection, FAKE_ROOT_ID } from '../introspection';
 import { SVGRender, getTypeGraph } from '../graph/';
 import { WorkerCallback } from '../utils/types';
-import FileSaver from 'file-saver';
 
 import * as React from 'react';
 import * as PropTypes from 'prop-types';
@@ -23,8 +23,20 @@ import Settings from './settings/Settings';
 import './Voyager.css';
 import './viewport.css';
 import { createNestedType } from '../utils/editing';
+import { ShortcutsNotification } from './utils/ShortcutsNotification';
 
 type IntrospectionProvider = (query: string) => Promise<any>;
+
+configure({
+  ignoreEventsCondition: (e: KeyboardEvent) => {
+    // @ts-ignore
+    if (e.key !== 'Enter' && e.key !== 'Escape' && e.target?.tagName?.toLowerCase() === 'input') {
+      // only handle enter and esc keys in inputs
+      return true;
+    }
+    return false;
+  },
+});
 
 export interface VoyagerDisplayOptions {
   rootType?: string;
@@ -225,6 +237,7 @@ export default class Voyager extends React.Component<VoyagerProps> {
 
     return (
       <MuiThemeProvider theme={theme}>
+        <ShortcutsNotification />
         <div className="graphql-voyager">
           {!hideDocs && this.renderPanel()}
           {!hideSettings && this.renderSettings()}
@@ -493,6 +506,7 @@ function newSchema(schemaName: string, schema: string) {
 function copyField(templateField, copiedField, scalars) {
   const field = _.cloneDeep(templateField);
   field.name = copiedField.name;
+  field.originalName = copiedField.originalName || copiedField.name;
   field.description = copiedField.description;
   field.type = createNestedType(copiedField.typeWrappers, copiedField.type.name, scalars);
   return field;
@@ -500,7 +514,9 @@ function copyField(templateField, copiedField, scalars) {
 
 function normalizeFields(mutableType, newTypeData, scalars) {
   // update fields - mutates the first argument!
-  const fieldKeys = Object.keys(newTypeData.fields);
+  const fieldKeys: string[] = Object.keys(newTypeData.fields);
+  // these can different from above in case a field was renamed:
+  const renamedFieldKeys = fieldKeys.map(f => newTypeData.fields[f].name);
   mutableType.fields = mutableType.fields
     .map(oldField => {
       const newField = newTypeData.fields[oldField.name];
@@ -514,19 +530,22 @@ function normalizeFields(mutableType, newTypeData, scalars) {
     .filter(x => x);
 
   // process new fields
+  let idx = 0;
   for (const newFieldKey of fieldKeys) {
-    if (!mutableType.fields.find(x => x.name === newFieldKey)) {
+    const renamed = renamedFieldKeys[idx];
+    if (!mutableType.fields.find(x => x.name === renamed)) {
       // a new field has been added -> add it to typegraph
       const newField = newTypeData.fields[newFieldKey];
       const field = copyField(mutableType.fields[0], newField, scalars);
-
       mutableType.fields.push(field);
     }
+    idx++;
   }
   // sort fields based on the new order set when editing
   mutableType.fields.sort(
     (a, b) =>
-      newTypeData.fields[a.name]?.originalPosition - newTypeData.fields[b.name]?.originalPosition,
+      newTypeData.fields[a.originalName]?.originalPosition -
+      newTypeData.fields[b.originalName]?.originalPosition,
   );
 }
 
