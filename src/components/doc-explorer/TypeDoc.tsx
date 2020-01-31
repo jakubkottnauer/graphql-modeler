@@ -201,7 +201,7 @@ const TypeDoc = ({
 
     types = types.filter(({ type }) => typeGraph.nodes[type.id] && isMatch(type.name, filter));
 
-    if (types.length === 0 && !isEditing) return null;
+    if (types.length === 0 && (usedSelectedType.kind !== 'UNION' || !isEditing)) return null;
 
     return (
       <div className={classNames('doc-category', isEditing && 'editing')}>
@@ -253,7 +253,7 @@ const TypeDoc = ({
             key: field.name,
             className: classNames('item', {
               '-selected': field.id === selectedEdgeID,
-              '-with-args': !_.isEmpty(field.args),
+              '-with-args': !isEditing && !_.isEmpty(field.args),
             }),
             onClick: () => onSelectEdge(field.id),
           };
@@ -680,21 +680,24 @@ const UnionEdit = ({ typeGraph, onChange, types }: any) => {
 
   return (
     <div className="item">
-      <Select
-        multiple
-        value={selectedValues}
-        onChange={e => onChange(e.target.value)}
-        input={<Input />}
-        renderValue={(selected: string[]) => selected.join(', ')}
-        style={{ width: '100%' }}
-      >
-        {possibleValues.map(s => (
-          <MenuItem key={s} value={s}>
-            <Checkbox checked={selectedValues.includes(s)} color="primary" />
-            <ListItemText primary={s} />
-          </MenuItem>
-        ))}
-      </Select>
+      <FormControl style={{ width: '100%' }} error={!selectedValues.length}>
+        <InputLabel shrink>Settings</InputLabel>
+        <Select
+          multiple
+          value={selectedValues}
+          onChange={e => onChange(e.target.value)}
+          input={<Input />}
+          renderValue={(selected: string[]) => selected.join(', ')}
+          style={{ width: '100%' }}
+        >
+          {possibleValues.map(s => (
+            <MenuItem key={s} value={s}>
+              <Checkbox checked={selectedValues.includes(s)} color="primary" />
+              <ListItemText primary={s} />
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
     </div>
   );
 };
