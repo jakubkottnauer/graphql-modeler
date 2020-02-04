@@ -280,8 +280,9 @@ export function getSchema(
 
 export function enrichIntrospection(introspection: any) {
   const copy = _.cloneDeep(introspection);
-
-  if (introspection.data.__schema.queryType.name === FAKE_ROOT_ID) {
+  const rootName = introspection.data.__schema.queryType.name;
+  // the startsWith condition should be removed in the future - temporary hacky migration
+  if (rootName === FAKE_ROOT_ID) {
     const fakeRootIdx = copy.data.__schema.types.findIndex(t => t.name === FAKE_ROOT_ID);
     copy.data.__schema.types[fakeRootIdx].fields = getAllFields(copy);
   } else {
@@ -291,8 +292,7 @@ export function enrichIntrospection(introspection: any) {
     const newRoot = {
       kind: 'OBJECT',
       name: FAKE_ROOT_ID,
-      description:
-        'This is a hidden root node pointing to all other types used for various internal purposes. Feel free to ignore it.',
+      description: rootName,
       inputFields: null,
       interfaces: [],
       enumValues: null,
@@ -301,6 +301,15 @@ export function enrichIntrospection(introspection: any) {
     };
 
     copy.data.__schema.types.push(newRoot);
+  }
+
+  // fix root description
+  const fakeRootIdx = copy.data.__schema.types.findIndex(t => t.name === FAKE_ROOT_ID);
+  const fakeRootDescription = copy.data.__schema.types[fakeRootIdx].description || '';
+
+  // Migrate from the old type description - remove this code later
+  if (fakeRootDescription.startsWith('This is a hidden')) {
+    copy.data.__schema.types[fakeRootIdx].description = copy.data.__schema.types[1].name;
   }
   return copy;
 }

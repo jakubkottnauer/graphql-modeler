@@ -44,6 +44,7 @@ export interface VoyagerDisplayOptions {
   skipDeprecated?: boolean;
   showLeafFields?: boolean;
   sortByAlphabet?: boolean;
+  showSubattributes?: boolean;
   hideRoot?: boolean;
   /* Used when creating an empty schema. */
   defaultSchema?: string;
@@ -55,6 +56,7 @@ const defaultDisplayOptions = {
   skipDeprecated: true,
   sortByAlphabet: false,
   showLeafFields: true,
+  showSubattributes: true,
   hideRoot: false,
   focusOn: undefined,
 };

@@ -45,6 +45,13 @@ export default class Settings extends React.Component<SettingsProps> {
             onChange={event => onChange({ showLeafFields: event.target.checked })}
           />
           <label htmlFor="showLeafFields">Show leaf attributes</label>
+          <Checkbox
+            id="showSubattributes"
+            color="primary"
+            checked={!!options.showSubattributes}
+            onChange={event => onChange({ showSubattributes: event.target.checked })}
+          />
+          <label htmlFor="showSubattributes">Show subattributes</label>
         </div>
       </div>
     );

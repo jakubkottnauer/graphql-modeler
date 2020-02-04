@@ -55,8 +55,12 @@ export default class FocusSelector extends React.Component<FocusSelectorProps> {
 
 function getRootSubTypeNames(schema) {
   let { queryType } = schema;
-  const names = [];
-  for (const field of Object.values<any>(queryType.fields)) {
+  const realRootName = queryType.description;
+  const names = [realRootName];
+  const realRoot: any = Object.values(queryType.fields).find(
+    (x: any) => x.name === realRootName,
+  ) as any;
+  for (const field of Object.values<any>(realRoot.type.fields)) {
     if (field.type.kind === 'OBJECT') {
       names.push(field.type.name);
     }

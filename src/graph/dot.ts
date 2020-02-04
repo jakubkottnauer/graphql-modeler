@@ -154,6 +154,9 @@ export function getDot(typeGraph, displayOptions): string {
   }
 
   function canDisplayRow(type, node) {
+    if (!displayOptions.showSubattributes && !node.fields.id) {
+      return false;
+    }
     if (
       displayOptions.focusOn &&
       displayOptions.focusOn !== node.name &&
