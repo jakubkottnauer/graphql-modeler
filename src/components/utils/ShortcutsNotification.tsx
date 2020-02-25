@@ -8,10 +8,9 @@ import CloseIcon from '@material-ui/icons/Close';
 const shortcuts = [
   ['s', 'New setting'],
   ['u', 'New union'],
-  ['d', 'Delete selected setting/union'],
+  ['a', 'Add attribute to selected setting'],
   ['c', 'Clone selected setting/union'],
   ['e', 'Edit selected setting/union'],
-  ['a', 'Add attribute to selected setting'],
 ];
 
 const shorcutStyle: any = {
@@ -40,6 +39,12 @@ const Message = () => (
         </p>
       ))}
       <p>
+        <span style={shorcutStyle}>d</span>
+        &nbsp;or&nbsp;
+        <span style={shorcutStyle}>Del</span>
+        &nbsp; Delete selected setting/union
+      </p>
+      <p>
         When editing, press <span style={shorcutStyle}>enter</span> to save or{' '}
         <span style={shorcutStyle}>esc</span> to cancel.
       </p>
@@ -48,7 +53,7 @@ const Message = () => (
 );
 
 export const ShortcutsNotification = () => {
-  const lsKey = 'disableShortcutNotification';
+  const lsKey = 'disableShortcutNotif';
   const [isOpen, setIsOpen] = React.useState(!localStorage.getItem(lsKey));
   const close = () => {
     setIsOpen(false);

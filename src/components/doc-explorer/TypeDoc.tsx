@@ -292,7 +292,7 @@ const TypeDoc = ({
         <>
           <div className="button-row">
             <GlobalHotKeys
-              keyMap={{ DELETE: 'd', EDIT: 'e' }}
+              keyMap={{ DELETE: ['d', 'del'], EDIT: 'e' }}
               handlers={{
                 DELETE: () => onDeleteType(usedSelectedType.id),
                 EDIT: enableEditing,
