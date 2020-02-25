@@ -24,13 +24,20 @@ import './Voyager.css';
 import './viewport.css';
 import { createNestedType } from '../utils/editing';
 import { ShortcutsNotification } from './utils/ShortcutsNotification';
+import { SnackbarNotification } from './utils/SnackbarNotification';
 
 type IntrospectionProvider = (query: string) => Promise<any>;
 
 configure({
   ignoreEventsCondition: (e: KeyboardEvent) => {
-    // @ts-ignore
-    if (e.key !== 'Enter' && e.key !== 'Escape' && e.target?.tagName?.toLowerCase() === 'input') {
+    const inputs = ['input', 'textarea'];
+
+    if (
+      e.key !== 'Enter' &&
+      e.key !== 'Escape' &&
+      // @ts-ignore
+      inputs.includes(e.target?.tagName?.toLowerCase())
+    ) {
       // only handle enter and esc keys in inputs
       return true;
     }
@@ -103,6 +110,9 @@ export default class Voyager extends React.Component<VoyagerProps> {
     selectedEdgeID: null,
     // schema currently being worked on -> null defaults to whatever is passed from
     selectedSchema: null,
+    // used to display error notification when the user attempts to delete the root node
+    // support for deleting the root node needs to be implemented
+    deletingRootNodeErrorShown: false,
   };
 
   svgRenderer: SVGRender;
@@ -240,6 +250,11 @@ export default class Voyager extends React.Component<VoyagerProps> {
     return (
       <MuiThemeProvider theme={theme}>
         <ShortcutsNotification />
+        <SnackbarNotification
+          text="Root setting cannot be deleted."
+          open={this.state.deletingRootNodeErrorShown}
+          setOpen={deletingRootNodeErrorShown => this.setState({ deletingRootNodeErrorShown })}
+        />
         <div className="graphql-voyager">
           {!hideDocs && this.renderPanel()}
           {!hideSettings && this.renderSettings()}
@@ -441,7 +456,15 @@ export default class Voyager extends React.Component<VoyagerProps> {
   };
 
   handleDeleteType = (typeId: string) => {
-    if (!typeId) return;
+    if (!typeId) {
+      return;
+    }
+
+    const realRootName = this.state.schema.queryType.description;
+    if (typeId === `TYPE::${realRootName}`) {
+      this.setState({ deletingRootNodeErrorShown: true });
+      return;
+    }
 
     if (!this.state.selectedSchema) {
       this.copyCurrentSchema();
