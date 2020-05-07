@@ -48,14 +48,11 @@ export function getDot(typeGraph, displayOptions): string {
       return '';
     }
     const enumListName = `${node.name}_${field.name}_enum`;
-
+    console.log(field.type);
     enums[enumListName] = {
       id: enumListName,
       name: enumListName,
-      label: enumLabel(
-        node,
-        field.type.enumValues.map(x => x.name),
-      ),
+      label: enumLabel(node, field.type.enumValues),
     };
     return `
     "${node.name}":"${field.name}" -> "${enumListName}" [
@@ -141,7 +138,7 @@ export function getDot(typeGraph, displayOptions): string {
     `;
   }
 
-  function enumLabel(node, enumValues: string[]) {
+  function enumLabel(node, enumValues) {
     const htmlID = HtmlId('TYPE_TITLE::' + node.name);
     return `
   <<TABLE ALIGN="LEFT" BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="5">
@@ -151,7 +148,7 @@ export function getDot(typeGraph, displayOptions): string {
       val => `
     <TR>
       <TD CELLPADDING="4">
-      ${val}
+      ${val.description || val.name}
       </TD>
       </TR>
         `,
