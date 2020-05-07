@@ -48,7 +48,6 @@ export function getDot(typeGraph, displayOptions): string {
       return '';
     }
     const enumListName = `${node.name}_${field.name}_enum`;
-    console.log(field.type);
     enums[enumListName] = {
       id: enumListName,
       name: enumListName,
