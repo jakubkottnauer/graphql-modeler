@@ -54,6 +54,10 @@ export default class DocExplorer extends React.Component<DocExplorerProps> {
         return { navStack: [initialNav], typeForInfoPopover: null };
       }
       const type = typeGraph.nodes[selectedTypeID];
+      if (!type) {
+        // probably clicked list of enum values - not supported right now
+        return null;
+      }
       const newNavStack = [...navStack, { title: type.name, type, searchValue: null }];
 
       return { navStack: newNavStack, typeForInfoPopover: null };

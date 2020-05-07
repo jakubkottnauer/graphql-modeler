@@ -11,7 +11,6 @@ export function getDefaultRoot(schema) {
 
 export function getTypeGraph(schema, rootType: string, hideRoot: boolean) {
   if (schema === null) return null;
-
   const rootId = typeNameToId(rootType || getDefaultRoot(schema));
   return buildGraph(rootId);
 
@@ -31,13 +30,11 @@ export function getTypeGraph(schema, rootType: string, hideRoot: boolean) {
     var typeIds = [rootId];
     var nodes = [];
     var types = _.keyBy(schema.types, 'id');
-
     for (var i = 0; i < typeIds.length; ++i) {
       var id = typeIds[i];
       if (typeIds.indexOf(id) < i) continue;
 
       var type = types[id];
-
       nodes.push(type);
       typeIds.push(...getEdgeTargets(type));
     }

@@ -130,7 +130,7 @@ export class Viewport {
     node.classList.add('selected');
     _.each(edgesFromNode(node), $edge => {
       $edge.classList.add('highlighted');
-      edgeTarget($edge).classList.add('selected-reachable');
+      edgeTarget($edge)?.classList.add('selected-reachable');
     });
 
     _.each(edgesTo(node.id), $edge => {

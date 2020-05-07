@@ -208,7 +208,6 @@ function assignTypesAndIDs(schema: SimplifiedIntrospection) {
   (<any>schema).queryType = schema.types[schema.queryType];
   (<any>schema).mutationType = schema.types[schema.mutationType];
   (<any>schema).subscriptionType = schema.types[schema.subscriptionType];
-
   _.each(schema.types, (type: any) => {
     type.id = typeNameToId(type.name);
 

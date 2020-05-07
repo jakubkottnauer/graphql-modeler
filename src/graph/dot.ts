@@ -5,11 +5,13 @@ import * as _ from 'lodash';
 let existingEdges = {};
 // memoize the existence of a path between two (possibly not adjacent nodes) - used to speed up DFS
 let knownPaths = {};
+// we render temporary "fake" nodes that display possible enum values
+let enums = {};
 
 export function getDot(typeGraph, displayOptions): string {
   existingEdges = {};
   knownPaths = {};
-
+  enums = {};
   const focusMode = !!displayOptions.focusOn;
   function isNode(type) {
     return typeGraph.nodes[type.id] !== undefined;
@@ -20,6 +22,7 @@ export function getDot(typeGraph, displayOptions): string {
     const createEdge =
       !focusMode || !existingEdges[intraNodeEdgeId] || displayOptions.focusOn === node.name;
     existingEdges[intraNodeEdgeId] = true;
+
     if (
       isNode(field.type) &&
       createEdge &&
@@ -38,6 +41,27 @@ export function getDot(typeGraph, displayOptions): string {
       ]`;
     }
     return '';
+  }
+
+  function getEnumEdge(node, field) {
+    if (field.type.kind !== 'ENUM') {
+      return '';
+    }
+    const enumListName = `${node.name}_${field.name}_enum`;
+
+    enums[enumListName] = {
+      id: enumListName,
+      name: enumListName,
+      label: enumLabel(
+        node,
+        field.type.enumValues.map(x => x.name),
+      ),
+    };
+    return `
+    "${node.name}":"${field.name}" -> "${enumListName}" [
+      id = "${field.id} => ${field.type.id}"
+      label = "${node.name}:${field.name}"
+    ]`;
   }
 
   return (
@@ -62,7 +86,8 @@ export function getDot(typeGraph, displayOptions): string {
           id = "${node.id}"
           label = ${nodeLabel(node)}
         ]
-        ${objectValues(node.fields, field => getEdge(node, field))};
+        ${objectValues(node.fields, field => getEdge(node, field))}
+        ${objectValues(node.fields, field => getEnumEdge(node, field))};
         ${array(
           node.possibleTypes,
           ({ id, type }) => `
@@ -81,8 +106,18 @@ export function getDot(typeGraph, displayOptions): string {
           ]
         `,
         )}
+        {}
       `,
       )}
+
+      ${objectValues(
+        enums,
+        e => `"${e.name}" [
+         id = "${e.id}",
+         label = ${e.label}
+       ]`,
+      )}
+
     }
   `
   );
@@ -104,6 +139,25 @@ export function getDot(typeGraph, displayOptions): string {
         ${derivedTypes(node)}
       </TABLE>>
     `;
+  }
+
+  function enumLabel(node, enumValues: string[]) {
+    const htmlID = HtmlId('TYPE_TITLE::' + node.name);
+    return `
+  <<TABLE ALIGN="LEFT" BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="5">
+  <TR>
+          <TD CELLPADDING="4" ${htmlID}><FONT POINT-SIZE="18">enum values</FONT></TD></TR>
+    ${enumValues.map(
+      val => `
+    <TR>
+      <TD CELLPADDING="4">
+      ${val}
+      </TD>
+      </TR>
+        `,
+    )}
+  </TABLE>>
+`;
   }
 
   /**
@@ -174,16 +228,17 @@ export function getDot(typeGraph, displayOptions): string {
     const relayIcon = field.relayType ? TEXT('{R}') : '';
     const deprecatedIcon = field.isDeprecated ? TEXT('{D}') : '';
     const parts = stringifyWrappers(field.typeWrappers).map(TEXT);
+
     return canDisplayRow(field.type, node)
       ? `
       <TR>
         <TD ${HtmlId(field.id)} ALIGN="LEFT" PORT="${field.name}">
           <TABLE CELLPADDING="0" CELLSPACING="0" BORDER="0">
-            <TR>
-              <TD ALIGN="LEFT">${field.name}<FONT>  </FONT></TD>
-              <TD ALIGN="RIGHT">${deprecatedIcon}${relayIcon}${parts[0]}${field.type.name}${
-          parts[1]
-        }</TD>
+          <TR>
+          <TD ALIGN="LEFT">${field.name}<FONT>  </FONT></TD>
+    <TD ALIGN="RIGHT">${deprecatedIcon}${relayIcon}${parts[0]}${
+          field.type.kind === 'ENUM' ? 'enum' : field.type.name
+        }${parts[1]} </TD>
             </TR>
           </TABLE>
         </TD>
