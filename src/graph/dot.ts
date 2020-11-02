@@ -1,5 +1,5 @@
 import { stringifyWrappers, FAKE_ROOT_ID } from '../introspection/';
-import * as _ from 'lodash';
+import { isEmpty, values } from 'lodash';
 
 // memoize existing edges betweens nodes used in focus modus to avoid duplicate edges
 let existingEdges = {};
@@ -246,7 +246,7 @@ export function getDot(typeGraph, displayOptions): string {
 
 function possibleTypes(node) {
   const possibleTypes = node.possibleTypes;
-  if (_.isEmpty(possibleTypes)) {
+  if (isEmpty(possibleTypes)) {
     return '';
   }
   return `
@@ -266,7 +266,7 @@ function possibleTypes(node) {
 
 function derivedTypes(node) {
   const derivedTypes = node.derivedTypes;
-  if (_.isEmpty(derivedTypes)) {
+  if (isEmpty(derivedTypes)) {
     return '';
   }
   return `
@@ -285,7 +285,7 @@ function derivedTypes(node) {
 }
 
 function objectValues<X>(object: { [key: string]: X }, stringify: (X, node) => string): string {
-  return _.values(object)
+  return values(object)
     .filter((x: any) => x.name !== FAKE_ROOT_ID)
     .map(stringify)
     .join('\n');

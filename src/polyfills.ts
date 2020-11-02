@@ -3,7 +3,7 @@ interface Element {
 }
 
 if (!Element.prototype.scrollIntoViewIfNeeded) {
-  Element.prototype.scrollIntoViewIfNeeded = function(centerIfNeeded, parent?) {
+  Element.prototype.scrollIntoViewIfNeeded = function (centerIfNeeded, parent?) {
     centerIfNeeded = arguments.length === 0 ? true : !!centerIfNeeded;
 
     var parent = parent || this.parentNode,

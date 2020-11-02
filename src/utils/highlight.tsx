@@ -1,12 +1,12 @@
 import * as React from 'react';
-import * as _ from 'lodash';
+import { escapeRegExp } from 'lodash';
 
 export function highlightTerm(content: string, term: string) {
   if (!term) {
     return content;
   }
 
-  var re = new RegExp('(' + _.escapeRegExp(term) + ')', 'gi');
+  var re = new RegExp('(' + escapeRegExp(term) + ')', 'gi');
   var result: any = content.split(re);
 
   // Apply highlight to all odd elements

@@ -1,5 +1,5 @@
 import * as React from 'react';
-import * as _ from 'lodash';
+import { uniq } from 'lodash';
 import { isNode } from '../../graph';
 
 import Select from '@material-ui/core/Select';
@@ -66,5 +66,5 @@ function getRootSubTypeNames(schema) {
     }
   }
 
-  return _.uniq(names);
+  return uniq(names);
 }

@@ -1,4 +1,4 @@
-import * as _ from 'lodash';
+import { cloneDeep } from 'lodash';
 import { FAKE_ROOT_ID } from '../introspection';
 
 export function createNestedType(typeWrappers: string[], typeName: string, scalars: string[]) {
@@ -8,10 +8,10 @@ export function createNestedType(typeWrappers: string[], typeName: string, scala
     ofType: null,
   };
   if (typeWrappers.includes('NON_NULL')) {
-    finalType = { kind: 'NON_NULL', name: null, ofType: _.cloneDeep(finalType) };
+    finalType = { kind: 'NON_NULL', name: null, ofType: cloneDeep(finalType) };
   }
   if (typeWrappers.includes('LIST')) {
-    finalType = { kind: 'LIST', name: null, ofType: _.cloneDeep(finalType) };
+    finalType = { kind: 'LIST', name: null, ofType: cloneDeep(finalType) };
   }
   return finalType;
 }

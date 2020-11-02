@@ -1,4 +1,4 @@
-import * as _ from 'lodash';
+import { map, chain } from 'lodash';
 import * as React from 'react';
 import * as classNames from 'classnames';
 import { GlobalHotKeys } from 'react-hotkeys';
@@ -28,7 +28,7 @@ export default class TypeList extends React.Component<TypeListProps> {
     if (typeGraph === null) return null;
 
     const rootType = typeGraph.nodes[typeGraph.rootId];
-    const types = _(typeGraph.nodes)
+    const types = chain(typeGraph.nodes)
       .values()
       .reject({ id: rootType && rootType.id })
       .sortBy('name')
@@ -53,7 +53,7 @@ export default class TypeList extends React.Component<TypeListProps> {
           <AddUnionButton typeGraph={typeGraph} onEditType={this.props.onEditType} />
         </div>
         {rootType && renderItem(rootType, '-root')}
-        {_.map(types, type => renderItem(type, ''))}
+        {map(types, type => renderItem(type, ''))}
       </div>
     );
 

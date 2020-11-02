@@ -1,7 +1,7 @@
-import * as _ from 'lodash';
+import { reduce, startsWith } from 'lodash';
 
 export function stringifyWrappers(wrappers) {
-  return _.reduce(
+  return reduce(
     wrappers.reverse(),
     ([left, right], wrapper) => {
       switch (wrapper) {
@@ -29,7 +29,7 @@ export function extractTypeId(id: string) {
 }
 
 export function isSystemType(type) {
-  return _.startsWith(type.name, '__');
+  return startsWith(type.name, '__');
 }
 
 export function isBuiltInScalarType(type) {

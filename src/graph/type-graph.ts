@@ -1,4 +1,4 @@
-import * as _ from 'lodash';
+import { values, keyBy, omit, chain } from 'lodash';
 import { typeNameToId, isScalarType, isInputObjectType, isSystemType } from '../introspection/';
 
 export function isNode(type) {
@@ -15,8 +15,8 @@ export function getTypeGraph(schema, rootType: string, hideRoot: boolean) {
   return buildGraph(rootId);
 
   function getEdgeTargets(type) {
-    return _([
-      ..._.values(type.fields),
+    return chain([
+      ...values(type.fields),
       ...(type.derivedTypes || []),
       ...(type.possibleTypes || []),
     ])
@@ -29,7 +29,7 @@ export function getTypeGraph(schema, rootType: string, hideRoot: boolean) {
   function buildGraph(rootId) {
     var typeIds = [rootId];
     var nodes = [];
-    var types = _.keyBy(schema.types, 'id');
+    var types = keyBy(schema.types, 'id');
     for (var i = 0; i < typeIds.length; ++i) {
       var id = typeIds[i];
       if (typeIds.indexOf(id) < i) continue;
@@ -40,7 +40,7 @@ export function getTypeGraph(schema, rootType: string, hideRoot: boolean) {
     }
     return {
       rootId,
-      nodes: hideRoot ? _.omit(_.keyBy(nodes, 'id'), [rootId]) : _.keyBy(nodes, 'id'),
+      nodes: hideRoot ? omit(keyBy(nodes, 'id'), [rootId]) : keyBy(nodes, 'id'),
     };
   }
 }

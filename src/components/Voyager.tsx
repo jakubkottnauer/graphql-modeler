@@ -4,9 +4,9 @@ import {
   introspectionFromSchema,
   buildSchema,
 } from 'graphql/utilities';
-import * as _ from 'lodash';
+import { cloneDeep } from 'lodash';
 import { configure } from 'react-hotkeys';
-import FileSaver from 'file-saver';
+import { saveAs } from 'file-saver';
 import { getSchema, extractTypeId, enrichIntrospection, FAKE_ROOT_ID } from '../introspection';
 import { SVGRender, getTypeGraph } from '../graph/';
 import { WorkerCallback } from '../utils/types';
@@ -290,7 +290,7 @@ export default class Voyager extends React.Component<VoyagerProps> {
           <DocExplorer
             saveToSvg={() => {
               this.svgRenderer.renderSvg(typeGraph, this.state.displayOptions).then(data => {
-                FileSaver.saveAs(new Blob([data], { type: 'image/svg+xml' }), 'model.svg');
+                saveAs(new Blob([data], { type: 'image/svg+xml' }), 'model.svg');
               });
             }}
             selectedSchema={this.state.selectedSchema}
@@ -411,7 +411,7 @@ export default class Voyager extends React.Component<VoyagerProps> {
     }
 
     const typeName = typeId.split('::')[1];
-    const data = _.cloneDeep(this.state.introspectionData);
+    const data = cloneDeep(this.state.introspectionData);
     const typeIndex = data.data.__schema.types.findIndex(
       t => (t.kind === 'OBJECT' || t.kind === 'UNION') && t.name === typeName,
     );
@@ -529,7 +529,7 @@ function newSchema(schemaName: string, schema: string) {
 }
 
 function copyField(templateField, copiedField, scalars) {
-  const field = _.cloneDeep(templateField);
+  const field = cloneDeep(templateField);
   field.name = copiedField.name;
   field.originalName = copiedField.originalName || copiedField.name;
   field.description = copiedField.description;

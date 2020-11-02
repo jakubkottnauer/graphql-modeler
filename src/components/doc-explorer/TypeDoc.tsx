@@ -1,4 +1,4 @@
-import * as _ from 'lodash';
+import { cloneDeep, map, isEmpty } from 'lodash';
 import * as React from 'react';
 
 import * as classNames from 'classnames';
@@ -90,7 +90,7 @@ const TypeDoc = ({
       return;
     }
 
-    const type = _.cloneDeep(usedSelectedType);
+    const type = cloneDeep(usedSelectedType);
 
     type.fields = Object.values(type.fields).reduce(
       (acc: any, f: any, idx) => ({
@@ -105,7 +105,7 @@ const TypeDoc = ({
   };
 
   const onEditEdge = (fieldId, newFieldId, newDescription, newDataType, newTypeWrappers) => {
-    let typeCopy = _.cloneDeep(usedSelectedType);
+    let typeCopy = cloneDeep(usedSelectedType);
 
     if (!isEditing) {
       typeCopy.fields = Object.values(typeCopy.fields).reduce(
@@ -117,7 +117,7 @@ const TypeDoc = ({
       );
     }
     if (!typeCopy.fields[fieldId]) {
-      typeCopy.fields[fieldId] = _.cloneDeep(typeCopy.fields[Object.keys(typeCopy.fields)[0]]);
+      typeCopy.fields[fieldId] = cloneDeep(typeCopy.fields[Object.keys(typeCopy.fields)[0]]);
       typeCopy.fields[fieldId].originalName = fieldId;
       typeCopy.fields[fieldId].originalPosition = Object.keys(typeCopy.fields).length;
     }
@@ -131,7 +131,7 @@ const TypeDoc = ({
   };
 
   const moveItem = (dragIdx: number, hoverIdx: number) => {
-    const typeCopy = _.cloneDeep(selectedType);
+    const typeCopy = cloneDeep(selectedType);
     const drag: any = Object.values(typeCopy.fields).find(
       (f: any) => f.originalPosition === dragIdx,
     );
@@ -146,7 +146,7 @@ const TypeDoc = ({
   };
 
   const onDeleteEdge = fieldId => {
-    const typeCopy = _.cloneDeep(usedSelectedType);
+    const typeCopy = cloneDeep(usedSelectedType);
     if (Object.keys(typeCopy.fields).length === 1) {
       // deleting last field -> delete type
       onDeleteType(typeCopy.id);
@@ -158,7 +158,7 @@ const TypeDoc = ({
   };
 
   const onEditUnion = (selectedValues: string[]) => {
-    const typeCopy = _.cloneDeep(usedSelectedType);
+    const typeCopy = cloneDeep(usedSelectedType);
     // we don't care about the field details when editing so most of the data are just stubs
     typeCopy.possibleTypes = selectedValues.map(value => ({
       id: 'notimportant',
@@ -213,7 +213,7 @@ const TypeDoc = ({
             onChange={onEditUnion}
           />
         ) : (
-          _.map(types, type => {
+          map(types, type => {
             let props: any = {
               key: type.id,
               className: classNames('item', {
@@ -252,7 +252,7 @@ const TypeDoc = ({
             key: field.name,
             className: classNames('item', {
               '-selected': field.id === selectedEdgeID,
-              '-with-args': !isEditing && !_.isEmpty(field.args),
+              '-with-args': !isEditing && !isEmpty(field.args),
             }),
             onClick: () => onSelectEdge(field.id),
           };
@@ -428,12 +428,12 @@ const ListItem = ({ filter, selectedId, onTypeLink, field, key, className, onDel
       <a className="field-name">{highlightTerm(field.name, filter)}</a>
       <span
         className={classNames('args-wrap', {
-          '-empty': _.isEmpty(field.args),
+          '-empty': isEmpty(field.args),
         })}
       >
-        {!_.isEmpty(field.args) && (
+        {!isEmpty(field.args) && (
           <span key="args" className="args">
-            {_.map(field.args, arg => (
+            {map(field.args, arg => (
               <Argument
                 key={arg.name}
                 arg={arg}

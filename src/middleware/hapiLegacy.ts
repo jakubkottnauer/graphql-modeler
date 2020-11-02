@@ -7,7 +7,7 @@ export interface Register {
   attributes?: any;
 }
 
-const hapi: Register = function(server, options, next) {
+const hapi: Register = function (server, options, next) {
   if (arguments.length !== 3) {
     throw new Error(`Voyager middleware expects exactly 3 arguments, got ${arguments.length}`);
   }

@@ -1,5 +1,5 @@
 import { SimplifiedTypeWithIDs } from '../../introspection/types';
-import * as _ from 'lodash';
+import { isEmpty, map } from 'lodash';
 import * as React from 'react';
 
 import Markdown from '../utils/Markdown';
@@ -13,12 +13,12 @@ interface TypeDetailsProps {
 
 export default class TypeDetails extends React.Component<TypeDetailsProps> {
   renderFields(type: SimplifiedTypeWithIDs, onTypeLink) {
-    if (_.isEmpty(type.inputFields)) return null;
+    if (isEmpty(type.inputFields)) return null;
 
     return (
       <div className="doc-category">
         <div className="title">attributes</div>
-        {_.map(type.inputFields, field => {
+        {map(type.inputFields, field => {
           return (
             <div key={field.id} className="item">
               <a className="field-name">{field.name}</a>
@@ -32,12 +32,12 @@ export default class TypeDetails extends React.Component<TypeDetailsProps> {
   }
 
   renderEnumValues(type: SimplifiedTypeWithIDs) {
-    if (_.isEmpty(type.enumValues)) return null;
+    if (isEmpty(type.enumValues)) return null;
 
     return (
       <div className="doc-category">
         <div className="title">values</div>
-        {_.map(type.enumValues, value => (
+        {map(type.enumValues, value => (
           <EnumValue key={value.name} value={value} />
         ))}
       </div>

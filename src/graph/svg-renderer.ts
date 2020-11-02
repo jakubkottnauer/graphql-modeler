@@ -1,4 +1,4 @@
-import * as _ from 'lodash';
+import { size } from 'lodash';
 import { getDot } from './dot';
 
 import { forEachNode, loadWorker as defaultLoadWorker, stringToSvg } from '../utils/';
@@ -71,7 +71,7 @@ function preprocessVizSVG(svgString: string) {
 
   forEachNode(svg, '[id]', $el => {
     let [tag, ...restOfId] = $el.id.split('::');
-    if (_.size(restOfId) < 1) return;
+    if (size(restOfId) < 1) return;
 
     $el.classList.add(tag.toLowerCase().replace(/_/, '-'));
   });
