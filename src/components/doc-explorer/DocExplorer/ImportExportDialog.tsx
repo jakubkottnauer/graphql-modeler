@@ -9,7 +9,7 @@ import {
   Typography,
 } from '@material-ui/core';
 import SaveIcon from '@material-ui/icons/Save';
-import FileSaver from 'file-saver';
+import { saveAs } from 'file-saver';
 
 type Props = {
   saveToSvg: () => void;
@@ -43,7 +43,7 @@ const ImportExportDialog = ({
 
   const saveToTxt = () => {
     const blob = new Blob([schema], { type: 'text/plain;charset=utf-8' });
-    FileSaver.saveAs(blob, 'model.txt');
+    saveAs(blob, 'model.txt');
   };
 
   return (
